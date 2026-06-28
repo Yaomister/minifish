@@ -3,7 +3,7 @@ import numpy as np
 
 class Chess:
 
-    def __init__(self, test_setup = None):
+    def __init__(self, accumulator , test_setup = None):
         # 8 x 8 board, filled with tuples representing (piece, color)
         self.board = np.full((8, 8), None, dtype=object)
         self.white_moves = True
@@ -11,6 +11,10 @@ class Chess:
         self.can_castle  = [[True, True], [True, True]]
         # if the previous player just pushed a pawn two squares, the opposing player can do en passant
         self.en_passant = False
+
+
+        # (start, end, piece played, piece taken, en passant, can castle)
+        self.previous_moves = []
 
         if test_setup:
             self.board = test_setup["board"]
@@ -35,6 +39,9 @@ class Chess:
         
         self.attack_directions = self._compute_possible_attack_directions()
         self.move_directions = self._compute_possible_move_directions()
+
+        self.accumulator : Accumulator = accumulator
+
     
 
     @staticmethod
@@ -137,25 +144,49 @@ class Chess:
 
 
     def _play_move(self, start, end, promotion):
-        if self.en_passant is not False:
-            self.en_passant = False
-            self.tensor[7, self.en_passant, :] = 0
-        # En Passant
-        if self.board[start][0] == "P":
-            if start[0] - end[0] != 0 and self.board[end] == None:
-                self.board[end[0], start[1]] = None
-                self.tensor[5, end[0], start[1]] = 0
-            if (abs(start[1] - end[1]) == 2):
-                self.en_passant = start[0]
-        # Castling
-        if self.board[start][0] == "K":
-            self.can_castle[0 if self.white_moves else 1] = [False, False]
-            self.tensor[0, (1, )]
 
-        self.board[end] = promotion if promotion else self.board[start]
+        added, removed = [], []
+
+        # reset enpassant
+        if self.en_passant:
+            self.en_passant = False
+
+        if self.board[start][0] == "P":
+            # capturing en passant
+            if (start[0] - end[0]) != 0 and self.board[end][0] == None:
+                en_passant_square = (end[0], start[1])
+                removed.append((en_passant_square, self.board[en_passant_square][0], self.board[en_passant_square][1]))
+                self.board[en_passant_square] = None
+            if (abs(start[1] - end[1]) == 2):
+                self.en_passant = end[0]
+            
+        # castling
+        if (self.board[start][0] == 'K') and abs(end[0] - start[0]) == 2:
+
+            # revoke castling rights
+            self.can_castle[self.white_moves] = [False, False]
+
+            castling_end = (5, start[1]) if start[0] - end[0] < 0 else (0, start[1])
+            castling_start = (7, start[1]) if start[0] - end[0] < 0 else (3, start[1])
+
+            added.append((castling_end, self.board[castling_start][0], self.board[castling_start][1]))
+            self.board[castling_end] = self.board[castling_start]
+            removed.append((castling_start, self.board[castling_start][0], self.board[castling_start][1]))
+            self.board[castling_start] = None
+        
+        
+        self.board[end] = self.board[start]
+        removed.append((start, self.board[start][0], self.board[start][1]))
         self.board[start] = None
 
-        # the tensor
+        if (promotion):
+            self.board[end][0] = promotion
+
+        added.append((end, self.board[end][0], self.board[end][1]))
+
+        self.accumulator.apply_difference(added, removed)
+        
+            
     
     def get_all_avaliable_moves(self):
         moves = []
@@ -225,11 +256,7 @@ class Chess:
                         if (new_pos[0] >= 0 and new_pos[0] <= 7 and new_pos[1] >= 0 and new_pos[0] <= 7 ):
                             log[file][rank].append(new_pos)
         return log
-
     
-
-    
-
     # precomplute possible positions it can move to 
     def _compute_possible_move_directions(self):
         # K, Q, R, B, N, white P, black P
@@ -281,56 +308,56 @@ class Chess:
         return log
     
 
-    class Accumulator():
-        def __init__(self, weights, biases):
-            self.weights = weights
-            self.biases = biases
-            self.accumulator = {True: biases.copy(), False: biases.copy()}
-            self.square_with_king = {True:None, False:None}
+class Accumulator():
+    def __init__(self, weights, biases):
+        self.weights = weights
+        self.biases = biases
+        self.accumulator = {True: biases.copy(), False: biases.copy()}
+        self.square_with_king = {True:None, False:None}
 
-        def _get_index(self, square_with_king, square_with_piece, piece_type, is_white, perspective):
-            piece_weights = {
-                "P": 0,
-                "N": 1,
-                "B": 2,
-                "R": 3,
-                "Q": 4
-            }
+    def _get_index(self, square_with_king, square_with_piece, piece_type, is_white, perspective):
+        piece_weights = {
+            "P": 0,
+            "N": 1,
+            "B": 2,
+            "R": 3,
+            "Q": 4
+        }
 
-            if not perspective:
-                square_with_king = square_with_king ^ 56
-                square_with_piece = square_with_piece ^ 56
+        if not perspective:
+            square_with_king = square_with_king ^ 56
+            square_with_piece = square_with_piece ^ 56
 
-            piece = piece_weights[piece_type] * 2 + (0 if is_white else 1)
+        piece = piece_weights[piece_type] * 2 + (0 if is_white else 1)
 
-            return square_with_king * 640 + square_with_piece * 10 + piece
+        return square_with_king * 640 + square_with_piece * 10 + piece
+    
+    def _refresh_accumulation(self, board, perspective):
+        for (file, rank), square in np.ndenumerate(board):
+            if square and square[0] == "K" and square[1] == perspective:
+                self.square_with_king[perspective] = file * 8 + rank
+                break
         
-        def _refresh_accumulation(self, board, perspective):
-            for (file, rank), square in np.ndenumerate(board):
-                if square and square[0] == "K" and square[1] == perspective:
-                    self.square_with_king[perspective] = file * 8 + rank
-                    break
-            
-            accumulator = self.biases.copy()
-            for (file, rank), square in np.ndenumerate(board):
-                if square and square[0] != "K":
-                    index = self._get_index(self.square_with_king[perspective], file * 8 + rank, square[0], square[1])
-                    accumulator[perspective] += self.weights[:, index]
+        accumulator = self.biases.copy()
+        for (file, rank), square in np.ndenumerate(board):
+            if square and square[0] != "K":
+                index = self._get_index(self.square_with_king[perspective], file * 8 + rank, square[0], square[1])
+                accumulator[perspective] += self.weights[:, index]
 
-            self.accumulator[perspective] = accumulator
-        
-        def refresh(self, board):
-            self._refresh_accumulation(board, True)
-            self._refresh_accumulation(board, False)
-            return
-        
-        def apply_difference(self, added, removed):
-            for perspective in (True, False):
-                square_with_king = self.square_with_king[perspective]
-                for square, piece, is_white in added:
-                    self.accumulator[perspective] += self.weights[:, self._get_index(square_with_king, square, piece, is_white, perspective)]
-                for square, piece, is_white in removed:
-                    self.accumulator[perspective] -= self.weights[:, self._get_index()]
+        self.accumulator[perspective] = accumulator
+    
+    def refresh(self, board):
+        self._refresh_accumulation(board, True)
+        self._refresh_accumulation(board, False)
+        return
+    
+    def apply_difference(self, added, removed):
+        for perspective in (True, False):
+            square_with_king = self.square_with_king[perspective]
+            for square, piece, is_white in added:
+                self.accumulator[perspective] += self.weights[:, self._get_index(square_with_king, square, piece, is_white, perspective)]
+            for square, piece, is_white in removed:
+                self.accumulator[perspective] -= self.weights[:, self._get_index()]
 
-        def get_logits(self, perspective):
-            return np.concatenate(self.accumulator[perspective], self.accumulator[not perspective])
+    def get_logits(self, perspective):
+        return np.concatenate(self.accumulator[perspective], self.accumulator[not perspective])
