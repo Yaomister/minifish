@@ -1,18 +1,72 @@
+import torch
 import numpy as np
+from chess import Chess
+from nneu import NNEU
 
 class Evaluator():
 
+
     def __init__(self):
-        self.model = self._load_model()
+        self.model : NNEU = self._load_model()
+        self.device = (torch.device("mps") if torch.backends.mps.is_available() else 
+        torch.device("cuda") if torch.cuda.is_available() else 
+        "cpu")
+        return
+
+
+    def get_best_move(self, game: Chess, maximizing: bool, depth_limit: int):
+
+        best_move = None
+        best_move_score = -float("inf") if maximizing else float('inf')
+
+        moves = game.get_all_avaliable_moves()
+
+        alpha = -float('inf')
+        beta = float("inf")
+
+
+        for start, end , promotion in moves:
+            score = self._minimax(game, alpha, beta, depth_limit - 1)
+            if maximizing:
+                if (score > best_move_score):
+                    best_move = (start, end, promotion)
+            else:
+                if (score < best_move_score):
+                    best_move = (start, end, promotion)
+        
+        return best_move
+
+
+    def _evaluate(self, board):
         return
     
-
-    def evaluate(self, board):
+    
+    def _iterative_deepening_search(self, board):
+        
         return
     
+    def _minimax(self, game : Chess, alpha: float, beta:float, depth, maximizing):
 
-    def _load_model(self, path):
-        return
+        moves = game.get_all_avaliable_moves()
 
-    def _minimax(self, maximize):
-        return
+        if depth == 0 or not moves:
+            if (game.is_in_check()):
+                return -float('inf') if maximizing else float("inf")
+            return self._evaluate(game)
+    
+        if maximizing:
+            for start, end, promotion in moves:
+                game.make_move(start, end ,promotion)
+                alpha = max(alpha, self._minimax(game, alpha, beta, depth - 1, False))
+                self.model.undo_move()
+                if beta <= alpha:
+                    break
+            return alpha
+        
+        else:
+            for start, end, promotion in moves:
+                game.make_move(start, end, promotion)
+                beta = min(beta, self._minimax(game, alpha, beta, depth - 1, False))
+                if beta <= alpha:
+                    break
+            return beta
