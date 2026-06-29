@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-class NNEU(torch.Module):
+class NNEU(nn.Module):
 
     in_features = 40960
 

@@ -34,10 +34,13 @@ class Accumulator():
         accumulator = self.biases.copy()
         for (file, rank), square in np.ndenumerate(board):
             if square and square[0] != "K":
-                index = self._get_index(self.square_with_king[perspective], file * 8 + rank, square[0], square[1])
+                index = self._get_index(self.square_with_king[perspective], file * 8 + rank, square[0], square[1], perspective)
                 accumulator[perspective] += self.weights[:, index]
 
         self.accumulator[perspective] = accumulator
+
+    def _convert_coordinates_to_matrix_index(self, square):
+        return square[0] * 8 + square[1]
     
     def refresh(self, board):
         self._refresh_accumulation(board, True)
@@ -48,9 +51,9 @@ class Accumulator():
         for perspective in (True, False):
             square_with_king = self.square_with_king[perspective]
             for square, piece, is_white in added:
-                self.accumulator[perspective] += self.weights[:, self._get_index(square_with_king, square, piece, is_white, perspective)]
+                self.accumulator[perspective] += self.weights[:, self._get_index(square_with_king, self._convert_coordinates_to_matrix_index(square), piece, is_white, perspective)]
             for square, piece, is_white in removed:
-                self.accumulator[perspective] -= self.weights[:, self._get_index()]
+                self.accumulator[perspective] -= self.weights[:, self._get_index(square_with_king, self._convert_coordinates_to_matrix_index(square), piece, is_white, perspective)]
 
     def get_logits(self, perspective):
         return np.concatenate(self.accumulator[perspective], self.accumulator[not perspective])

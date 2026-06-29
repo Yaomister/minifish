@@ -1,5 +1,6 @@
 from chess import Chess
 from evaluator import Evaluator
+import traceback
 from accumulator import Accumulator
 
 
@@ -27,11 +28,12 @@ def __main__():
                     start = game.convert_coordinates(start)
                     end = game.convert_coordinates(end)
 
-                    if (game.board[start] and Chess.is_reachable(game.board, start, abs(start[0] - end[0]), abs(start[1] - end[1])) and game.make_move(start, end, promotion)):
+                    if game.board[start] and Chess.is_reachable(game.board, start, end[0] - start[0], end[1] - start[1]) and game.make_move(start, end, promotion):
+                        print("yeeted")
                         break
-
                     raise ValueError()
-                except:
+                except Exception as error:
+                    traceback.print_exc()
                     print("Invalid move")
         else:
             start, end, promotion = evaluator.get_best_move(game, False, 5)

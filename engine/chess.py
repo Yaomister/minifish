@@ -40,8 +40,7 @@ class Chess:
         self.move_directions = self._compute_possible_move_directions()
 
         self.accumulator = accumulator
-
-    
+        accumulator.refresh(self.board)
 
     
 
@@ -54,12 +53,13 @@ class Chess:
      
         match piece:
             case "P":
+                print(dist_f)
                 if (dist_f == 0):
                     if is_white:
-                        return dist_f == 1 or (dist_f == 2 and start[1] == 1)
+                        return dist_r == 1 or (dist_r == 2 and start[1] == 1)
                     return dist_f == -1 or (dist_f == -2 and start[1] == 6)
-                return abs(dist_f) ==1 and (dist_r == 1 if is_white else -1)
-            case "K":
+                return abs(dist_f) ==1 and (dist_r == (1 if is_white else -1))
+            case "N":
                 return (abs(dist_r) == 2 and abs(dist_f) == 1) or (abs(dist_r) == 1 and abs(dist_f) == 2)
             case "B":
                 return abs(dist_r) - abs(dist_f) == 0
@@ -141,7 +141,8 @@ class Chess:
     def make_move(self, start, end, promotion):
         if (self.is_valid_move(start, end, promotion)):
             self._play_move(start, end, promotion)
-        return
+            return True
+        return False
     
 
     def convert_coordinates(self, coordinates):
@@ -160,9 +161,11 @@ class Chess:
 
         # reset enpassant
         if self.en_passant:
+            print("A")
             self.en_passant = False
 
         if self.board[start][0] == "P":
+            print("B")
             # capturing en passant
             if (start[0] - end[0]) != 0 and self.board[end][0] == None:
                 en_passant_square = (end[0], start[1])
@@ -173,6 +176,7 @@ class Chess:
             
         # castling
         if (self.board[start][0] == 'K') and abs(end[0] - start[0]) == 2:
+            print("C")
 
             # revoke castling rights
             self.can_castle[self.white_moves] = [False, False]
@@ -190,12 +194,18 @@ class Chess:
         removed.append((start, self.board[start][0], self.board[start][1]))
         self.board[start] = None
 
+        print("D")
+
         if (promotion):
             self.board[end][0] = promotion
 
         added.append((end, self.board[end][0], self.board[end][1]))
 
+        print("E")
+
         self.accumulator.apply_difference(added, removed)
+
+        print("F")
         
             
     

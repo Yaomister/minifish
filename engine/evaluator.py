@@ -7,18 +7,19 @@ from accumulator import Accumulator
 
 class Evaluator():
 
-    def __init__(self, file_path):
-        model : NNEU = self._load_model()
+    def __init__(self, file_path = None):
+        model = NNEU()
         self.device = (torch.device("mps") if torch.backends.mps.is_available() else 
                         torch.device("cuda") if torch.cuda.is_available() else 
                         torch.device("cpu")
         )
 
-        model.to(self.device)
-        saved_state_dict = torch.load(file_path)
-        model.load_state_dict(saved_state_dict)
-        model.eval()
-        print(f"loaded in model from ${file_path}")
+        if (file_path):
+            model.to(self.device)
+            saved_state_dict = torch.load(file_path)
+            model.load_state_dict(saved_state_dict)
+            model.eval()
+            print(f"loaded in model from ${file_path}")
 
         self.model = model
 
@@ -81,4 +82,5 @@ class Evaluator():
             return beta
         
     def build_accumulator(self):
-        return Accumulator(self.model.feature_extractor.weight, self.model.feature_extractor.bias)
+        accumulator =  Accumulator(self.model.feature_extractor.weight.detach().cpu().numpy(), self.model.feature_extractor.bias.detach().cpu().numpy())
+        return accumulator
