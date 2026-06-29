@@ -15,6 +15,8 @@ class Chess:
         # (start, end, piece played, piece taken, en passant, can castle)
         self.previous_moves = []
 
+        self.king_locations = [(4, 0), (4, 7)]
+
         if test_setup:
             self.board = test_setup["board"]
             self.white_moves = test_setup['white_moves']
@@ -38,6 +40,7 @@ class Chess:
         
         self.attack_directions = self._compute_possible_attack_directions()
         self.move_directions = self._compute_possible_move_directions()
+
 
         self.accumulator = accumulator
         accumulator.refresh(self.board)
@@ -131,11 +134,77 @@ class Chess:
         
         dist_f = end[0] - start[0]
         dist_r = end[1] - start[1]
+
         # check if they can castle
         if not self.can_castle[0 if self.white_moves else 1][0 if dist_f == 2 else 1]:
             return False
         
-        # check if there's anything blocking the way of a rook or bishop
+        # you cant place in a square that already has a piece of the same color
+        if self.board[end] is not None and self.board[end][1] == self.white_moves:
+            return False
+        
+        # check if there's anything blocking the path for a rook, bishop, or queen
+        if piece != "K" or abs(dist_f) != 2:
+            # bishop sliding
+            factor_f = int(dist_f/abs(dist_r))
+            factor_r = int(dist_r/abs(dist_f))
+            if abs(dist_f) == abs(dist_r):
+                for i in range(1, abs(dist_f)):
+                    if (self.board[i * factor_f, i * factor_r] is not None):
+                        return False
+            if dist_f == 0:
+                for i in range(1, abs(dist_r)):
+                    if (self.board[start[0]][start[1] + i * factor_r] is not None):
+                        return False
+            if dist_r == 0:
+                for i in range(1, abs(dist_f)):
+                    if (self.board[start[0] + i * factor_f][start[1]] is not None):
+                        return False
+                    
+            check_board = self.board.copy()
+            if piece == "P" and dist_f != 0 and check_board[end] == None:
+                check_board[end[0]][start[1]] = None
+            
+            check_board[end] = check_board[start]
+            check_board[start] = None
+            return Chess.is_in_check(check_board, self.white_moves, self.attack_directions, self.king_locations[0 if self.board[start][1] else 1])
+                    
+        # check the spaces between the rook and the king is empty
+        if dist_f == 2:
+            for i in range(5, 7):
+                if (self.board[i][start[1]] is not None):
+                    return False   
+        else:
+            for i in range(1, 4):
+                if (self.board[i][start[1]] is not None):
+                    return False
+        # cannot castle out of a check
+        if Chess.is_in_check(self.board, self.white_moves, self.attack_directions, self.king_locations[self.board[start][1]]):
+            return False
+        
+        check_board = self.board.copy()
+
+        if dist_f == 2:
+            check_board[5, start[1]] = check_board[start]
+        else:
+            check_board[3, start[1]] = check_board[start]
+        check_board[start] = None
+        # cannot castle through a square that is under attack
+        if Chess.is_in_check(check_board, self.white_moves, self.attack_directions, (5, start[1]) if dist_f == 2 else (3, start[1])):
+            return False
+        
+        if dist_f == 2:
+            check_board[6, start[1]] = self.board[start]
+            check_board[5, start[1]] = check_board[7, start[1]]
+            check_board[7, start[1]] = None
+        else:
+            check_board[2, start[1]] = self.board[start]
+            check_board[3, start[1]] = check_board[0, start[1]]
+            check_board[0, start[1]] = None
+
+        if Chess.is_in_check(check_board, self.white_moves, self.attack_directions, end):
+            return False
+
         return True
     
     def make_move(self, start, end, promotion):
@@ -194,18 +263,14 @@ class Chess:
         removed.append((start, self.board[start][0], self.board[start][1]))
         self.board[start] = None
 
-        print("D")
 
         if (promotion):
             self.board[end][0] = promotion
 
         added.append((end, self.board[end][0], self.board[end][1]))
 
-        print("E")
-
         self.accumulator.apply_difference(added, removed)
 
-        print("F")
         
             
     
