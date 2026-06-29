@@ -2,16 +2,25 @@ import torch
 import numpy as np
 from chess import Chess
 from nneu import NNEU
+from accumulator import Accumulator
+
 
 class Evaluator():
 
-
-    def __init__(self):
-        self.model : NNEU = self._load_model()
+    def __init__(self, file_path):
+        model : NNEU = self._load_model()
         self.device = (torch.device("mps") if torch.backends.mps.is_available() else 
-        torch.device("cuda") if torch.cuda.is_available() else 
-        "cpu")
-        return
+                        torch.device("cuda") if torch.cuda.is_available() else 
+                        torch.device("cpu")
+        )
+
+        model.to(self.device)
+        saved_state_dict = torch.load(file_path)
+        model.load_state_dict(saved_state_dict)
+        model.eval()
+        print(f"loaded in model from ${file_path}")
+
+        self.model = model
 
 
     def get_best_move(self, game: Chess, maximizing: bool, depth_limit: int):
@@ -38,9 +47,9 @@ class Evaluator():
 
 
     def _evaluate(self, board):
-        return
+        return -1
     
-    
+
     def _iterative_deepening_search(self, board):
         
         return
@@ -70,3 +79,6 @@ class Evaluator():
                 if beta <= alpha:
                     break
             return beta
+        
+    def build_accumulator(self):
+        return Accumulator(self.model.feature_extractor.weight, self.model.feature_extractor.bias)
