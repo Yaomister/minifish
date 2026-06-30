@@ -11,17 +11,18 @@ def __main__():
     accumulator = evaluator.build_accumulator()
     game = Chess(accumulator)
 
-
     color = input("Choose color (B/W)\n") == "W"
 
     while not len(game.get_all_avaliable_moves()) == 0:
         print(game)
-        print("")
+        print(game.board)
         if game.white_moves == color:
             while True:
                 try:
                     print("Your move")
                     start = input("Choose a starting square (e.g C5):\n").capitalize()
+                    if start == "Quit":
+                        return
                     end = input("Choose a end square (e.g A1):\n").capitalize()
                     promotion = input("Choose piece to promote to (press enter/return if not applicable):\n").capitalize()
 
@@ -29,10 +30,9 @@ def __main__():
                     end = game.convert_coordinates(end)
 
                     if game.board[start] and Chess.is_reachable(game.board, start, end[0] - start[0], end[1] - start[1]) and game.make_move(start, end, promotion):
-                        print("yeeted")
                         break
                     raise ValueError()
-                except Exception as error:
+                except:
                     traceback.print_exc()
                     print("Invalid move")
         else:

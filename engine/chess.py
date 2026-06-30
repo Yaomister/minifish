@@ -77,7 +77,7 @@ class Chess:
     def is_in_check(board, color, attack_directions, king_position):
         for (file, rank) in attack_directions[king_position[0]][king_position[1]]:
             piece_at_attacking_pos = board[file][rank]
-            if piece_at_attacking_pos[1] != color:
+            if piece_at_attacking_pos and piece_at_attacking_pos[1] != color:
                 match piece_at_attacking_pos[0]:
                     case "Q" | "B" | "R":
                         displacement = (king_position[0] - file, king_position[1] - rank)
@@ -120,6 +120,7 @@ class Chess:
         return False
     
     def is_valid_move(self, start, end, promotion = None):
+        
         piece = self.board[start]
 
         # check if end position is out of bounds
@@ -127,9 +128,10 @@ class Chess:
             return False
         
         # check if they can promote
-        if promotion and (piece != "P" or promotion not in ['Q', 'K', "R", "B"] or end[1] not in [0, 7]):
+        if promotion and (piece != "P" or promotion not in ['Q', "R", "B", "N"] or end[1] not in [0, 7]):
             return False
-        if piece == "P" and end[1] in [0, 7] and not promotion:
+        
+        if piece[0] == "P" and end[1] in [0, 7] and not promotion:
             return False
         
         dist_f = end[0] - start[0]
@@ -144,19 +146,21 @@ class Chess:
             return False
         
         # check if there's anything blocking the path for a rook, bishop, or queen
-        if piece != "K" or abs(dist_f) != 2:
+        if piece[0] != "K" or abs(dist_f) != 2:
             # bishop sliding
-            factor_f = int(dist_f/abs(dist_r))
-            factor_r = int(dist_r/abs(dist_f))
             if abs(dist_f) == abs(dist_r):
+                factor_f = int(dist_f/abs(dist_f))
+                factor_r = int(dist_r/abs(dist_r))
                 for i in range(1, abs(dist_f)):
-                    if (self.board[i * factor_f, i * factor_r] is not None):
+                    if (self.board[start[0] + i * factor_f, start[1] + i * factor_r] is not None):
                         return False
             if dist_f == 0:
+                factor_r = int(dist_r/abs(dist_r))
                 for i in range(1, abs(dist_r)):
                     if (self.board[start[0]][start[1] + i * factor_r] is not None):
                         return False
             if dist_r == 0:
+                factor_f = int(dist_f/abs(dist_f))
                 for i in range(1, abs(dist_f)):
                     if (self.board[start[0] + i * factor_f][start[1]] is not None):
                         return False
@@ -167,7 +171,7 @@ class Chess:
             
             check_board[end] = check_board[start]
             check_board[start] = None
-            return Chess.is_in_check(check_board, self.white_moves, self.attack_directions, self.king_locations[0 if self.board[start][1] else 1])
+            return not Chess.is_in_check(check_board, self.white_moves, self.attack_directions, self.king_locations[0 if self.board[start][1] else 1])
                     
         # check the spaces between the rook and the king is empty
         if dist_f == 2:
@@ -179,7 +183,7 @@ class Chess:
                 if (self.board[i][start[1]] is not None):
                     return False
         # cannot castle out of a check
-        if Chess.is_in_check(self.board, self.white_moves, self.attack_directions, self.king_locations[self.board[start][1]]):
+        if not Chess.is_in_check(self.board, self.white_moves, self.attack_directions, self.king_locations[self.board[start][1]]):
             return False
         
         check_board = self.board.copy()
@@ -188,11 +192,13 @@ class Chess:
             check_board[5, start[1]] = check_board[start]
         else:
             check_board[3, start[1]] = check_board[start]
-        check_board[start] = None
+        
         # cannot castle through a square that is under attack
-        if Chess.is_in_check(check_board, self.white_moves, self.attack_directions, (5, start[1]) if dist_f == 2 else (3, start[1])):
+        check_board[start] = None
+        if not Chess.is_in_check(check_board, self.white_moves, self.attack_directions, (5, start[1]) if dist_f == 2 else (3, start[1])):
             return False
         
+
         if dist_f == 2:
             check_board[6, start[1]] = self.board[start]
             check_board[5, start[1]] = check_board[7, start[1]]
@@ -202,7 +208,7 @@ class Chess:
             check_board[3, start[1]] = check_board[0, start[1]]
             check_board[0, start[1]] = None
 
-        if Chess.is_in_check(check_board, self.white_moves, self.attack_directions, end):
+        if not Chess.is_in_check(check_board, self.white_moves, self.attack_directions, end):
             return False
 
         return True
@@ -219,7 +225,7 @@ class Chess:
         if isinstance(coordinates, str):
             return (letters.index(coordinates[0]), int(coordinates[1]) - 1)
         if isinstance(coordinates, tuple):
-            return letters[coordinates[0] - 1] + str(coordinates[1] - 1)
+            return letters[coordinates[0]] + str(coordinates[1] + 1)
         
         raise TypeError()
 
@@ -230,11 +236,9 @@ class Chess:
 
         # reset enpassant
         if self.en_passant:
-            print("A")
             self.en_passant = False
 
         if self.board[start][0] == "P":
-            print("B")
             # capturing en passant
             if (start[0] - end[0]) != 0 and self.board[end][0] == None:
                 en_passant_square = (end[0], start[1])
@@ -245,7 +249,6 @@ class Chess:
             
         # castling
         if (self.board[start][0] == 'K') and abs(end[0] - start[0]) == 2:
-            print("C")
 
             # revoke castling rights
             self.can_castle[self.white_moves] = [False, False]
@@ -257,12 +260,10 @@ class Chess:
             self.board[castling_end] = self.board[castling_start]
             removed.append((castling_start, self.board[castling_start][0], self.board[castling_start][1]))
             self.board[castling_start] = None
-        
-        
+            
         self.board[end] = self.board[start]
         removed.append((start, self.board[start][0], self.board[start][1]))
         self.board[start] = None
-
 
         if (promotion):
             self.board[end][0] = promotion
@@ -271,8 +272,6 @@ class Chess:
 
         self.accumulator.apply_difference(added, removed)
 
-        
-            
     
     def get_all_avaliable_moves(self):
         moves = []
@@ -283,18 +282,15 @@ class Chess:
                 else:
                     i = ["K", "Q", "B", "R", "N"].index(square[0])
 
-            for end in self.move_directions[start[0]][start[1]][i]:
-                if (end[1] in [0, 7]):
-                    for promotion in ["Q", "R", "B", "K"]:
-                        if (self.is_valid_move(start, end, promotion)):
-                            moves.append((start, end, promotion))
-                else:
-                    if (self.is_valid_move(start, end , None)):
-                        moves.append((start, end))
-                    
+                for end in self.move_directions[start[0]][start[1]][i]:
+                    if (end[1] in [0, 7]):
+                        for promotion in ["Q", "R", "B", "K"]:
+                            if (self.is_valid_move(start, end, promotion)):
+                                moves.append((start, end, promotion))
+                    else:
+                        if (self.is_valid_move(start, end , None)):
+                            moves.append((start, end))              
         return moves
-
-
 
     def __str__(self):
         display = "\x1b[31m"
@@ -304,7 +300,7 @@ class Chess:
             display +=  "\x1b[31m" + str(i + 1) + "\x1b[0m"
             for j in range(8):
                 if not self.board[j, i]:
-                    display += " "
+                    display += "  "
                 elif self.board[j, i][1]:
                     display += f" \x1b[37m{self.board[j, i][0]}\x1b[0m"
                 else:
@@ -392,4 +388,3 @@ class Chess:
                     log[file][rank][i].remove(move)
 
         return log
-    
