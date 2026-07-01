@@ -15,7 +15,7 @@ def __main__():
 
     while not len(game.get_all_avaliable_moves()) == 0:
         print(game)
-        if game.white_moves == color:
+        if game.turn == color:
             while True:
                 try:
                     print("Your move")

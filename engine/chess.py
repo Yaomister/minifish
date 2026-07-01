@@ -1,12 +1,13 @@
 import numpy as np
+from accumulator import Accumulator
 
 
 class Chess:
 
-    def __init__(self, accumulator , test_setup = None):
+    def __init__(self, accumulator : Accumulator , test_setup = None):
         # 8 x 8 board, filled with tuples representing (piece, color)
         self.board = np.full((8, 8), None, dtype=object)
-        self.white_moves = True
+        self.turn = True
         # can player castle? each value represents short-castling and long-castling for white and black
         self.can_castle  = [[True, True], [True, True]]
         # if the previous player just pushed a pawn two squares, the opposing player can do en passant
@@ -19,7 +20,7 @@ class Chess:
 
         if test_setup:
             self.board = test_setup["board"]
-            self.white_moves = test_setup['white_moves']
+            self.turn = test_setup['turn']
             self.can_castle = test_setup['can_castle']
             self.en_passant = test_setup['en_passant']
         else:
@@ -42,6 +43,7 @@ class Chess:
         self.move_directions = self._compute_possible_move_directions()
 
 
+
         self.accumulator = accumulator
         accumulator.refresh(self.board)
 
@@ -56,7 +58,6 @@ class Chess:
      
         match piece:
             case "P":
-                print(dist_f)
                 if (dist_f == 0):
                     if is_white:
                         return dist_r == 1 or (dist_r == 2 and start[1] == 1)
@@ -123,19 +124,16 @@ class Chess:
         
         piece = self.board[start]
 
-        print(f"{start} to {end}: 1")
 
         # check if end position is out of bounds
         if (end[0] < 0 or end[0] > 7 or end[1] < 0 or end[1] > 7):
             return False
         
-        print(f"{start} to {end}: 2")
         
         # check if they can promote
         if promotion and (piece != "P" or promotion not in ['Q', "R", "B", "N"] or end[1] not in [0, 7]):
             return False
 
-        print(f"{start} to {end}: 3")
         
         if piece[0] == "P" and end[1] in [0, 7] and not promotion:
             return False
@@ -143,14 +141,11 @@ class Chess:
         dist_f = end[0] - start[0]
         dist_r = end[1] - start[1]
 
-
-        print(f"{start} to {end}: 4")
         
         # you cant place in a square that already has a piece of the same color
-        if self.board[end] is not None and self.board[end][1] == self.white_moves:
+        if self.board[end] is not None and self.board[end][1] == self.turn:
             return False
         
-        print(f"{start} to {end}: 5")
         
         # check if there's anything blocking the path for a rook, bishop, or queen
         if piece[0] != "K" or abs(dist_f) != 2:
@@ -179,10 +174,9 @@ class Chess:
             
             check_board[end] = check_board[start]
             check_board[start] = None
-            return not Chess.is_in_check(check_board, self.white_moves, self.attack_directions, self.king_locations[0 if self.board[start][1] else 1])
-        print(f"{start} to {end}: 6")
+            return not Chess.is_in_check(check_board, self.turn, self.attack_directions, self.king_locations[0 if self.board[start][1] else 1])
         # check if they can castle
-        if not self.can_castle[0 if self.white_moves else 1][0 if dist_f == 2 else 1]:
+        if not self.can_castle[0 if self.turn else 1][0 if dist_f == 2 else 1]:
             return False
         
 
@@ -196,10 +190,9 @@ class Chess:
                 if (self.board[i][start[1]] is not None):
                     return False
         # cannot castle out of a check
-        if Chess.is_in_check(self.board, self.white_moves, self.attack_directions, self.king_locations[0 if self.board[start][1] else 1]):
+        if Chess.is_in_check(self.board, self.turn, self.attack_directions, self.king_locations[0 if self.board[start][1] else 1]):
             return False
         
-        print(7)
         check_board = self.board.copy()
 
         if dist_f == 2:
@@ -209,7 +202,7 @@ class Chess:
         
         # cannot castle through a square that is under attack
         check_board[start] = None
-        if Chess.is_in_check(check_board, self.white_moves, self.attack_directions, (5, start[1]) if dist_f == 2 else (3, start[1])):
+        if Chess.is_in_check(check_board, self.turn, self.attack_directions, (5, start[1]) if dist_f == 2 else (3, start[1])):
             return False
         
 
@@ -222,7 +215,7 @@ class Chess:
             check_board[3, start[1]] = check_board[0, start[1]]
             check_board[0, start[1]] = None
 
-        if Chess.is_in_check(check_board, self.white_moves, self.attack_directions, end):
+        if Chess.is_in_check(check_board, self.turn, self.attack_directions, end):
             return False
 
         return True
@@ -249,6 +242,15 @@ class Chess:
 
         added, removed = [], []
 
+        self.previous_moves.append({
+            "added": added,
+            "removed": removed,
+            "turn" : self.turn,
+            "en_passant": self.en_passant,
+            "can_castle" : self.can_castle,
+            "king_locations": list(self.king_locations),
+        })
+
         # reset enpassant
         if self.en_passant:
             self.en_passant = False
@@ -266,7 +268,7 @@ class Chess:
         if (self.board[start][0] == 'K') and abs(end[0] - start[0]) == 2:
 
             # revoke castling rights
-            self.can_castle[self.white_moves] = [False, False]
+            self.can_castle[self.turn] = [False, False]
 
             castling_end = (5, start[1]) if start[0] - end[0] < 0 else (0, start[1])
             castling_start = (7, start[1]) if start[0] - end[0] < 0 else (3, start[1])
@@ -276,6 +278,10 @@ class Chess:
             removed.append((castling_start, self.board[castling_start][0], self.board[castling_start][1]))
             self.board[castling_start] = None
             
+
+        if self.board[end] is not None:
+            removed.append((end, self.board[end][0], self.board[end][1]))
+
         self.board[end] = self.board[start]
         removed.append((start, self.board[start][0], self.board[start][1]))
         self.board[start] = None
@@ -287,17 +293,36 @@ class Chess:
 
         self.accumulator.apply_difference(added, removed)
 
+
         if (self.board[end][0] == "K"):
-            self.king_locations[self.white_moves] = end
-        self.white_moves = not self.white_moves
+            self.king_locations[0 if self.turn else 1] = end
+        
+
+        self.turn = not self.turn
+
+    def undo_move(self):
+        record = self.previous_moves.pop()
+
+        self.accumulator.apply_difference(added=record['removed'], removed=record['added'])
+
+
+        self.turn = record['turn']
+        self.en_passant = record["en_passant"]
+        self.king_locations = record["king_locations"]
+        self.can_castle = record["can_castle"]
+
+        for (square, letter, color) in record['added']:
+            self.board[square] = (letter, color)
+        for (square, _, _) in record["removed"]:
+            self.board[square] = None
 
     
     def get_all_avaliable_moves(self):
         moves = []
         for start, square in np.ndenumerate(self.board):
-            if square and square[1] == self.white_moves:
+            if square and square[1] == self.turn:
                 if square[0] == "P":
-                    i = 5 if self.white_moves else 6
+                    i = 5 if self.turn else 6
                 else:
                     i = ["K", "Q", "R", "B", "N"].index(square[0])
 
@@ -313,7 +338,7 @@ class Chess:
 
     def __str__(self):
         display = "\x1b[31m"
-        display += "White's Move" if self.white_moves else "Black's Move"
+        display += "White's Move" if self.turn else "Black's Move"
         display += "\x1b[0m\n"
         for i in range(7, -1, -1):
             display +=  "\x1b[31m" + str(i + 1) + "\x1b[0m"
