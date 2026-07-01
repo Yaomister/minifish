@@ -36,7 +36,7 @@ class Evaluator():
 
 
         for start, end , promotion in moves:
-            score = self._minimax(game, alpha, beta, depth_limit - 1)
+            score = self._minimax(game, alpha, beta, depth_limit - 1, maximizing)
             if maximizing:
                 if (score > best_move_score):
                     best_move = (start, end, promotion)
@@ -60,7 +60,7 @@ class Evaluator():
         moves = game.get_all_avaliable_moves()
 
         if depth == 0 or not moves:
-            if (game.is_in_check()):
+            if (game.is_in_check(game.board, game.white_moves, game.attack_directions, game.king_locations[0 if game.white_moves else 1])):
                 return -float('inf') if maximizing else float("inf")
             return self._evaluate(game)
     
@@ -77,6 +77,7 @@ class Evaluator():
             for start, end, promotion in moves:
                 game.make_move(start, end, promotion)
                 beta = min(beta, self._minimax(game, alpha, beta, depth - 1, False))
+                self.model.undo_moves()
                 if beta <= alpha:
                     break
             return beta

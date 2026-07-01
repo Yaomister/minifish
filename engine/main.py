@@ -15,7 +15,6 @@ def __main__():
 
     while not len(game.get_all_avaliable_moves()) == 0:
         print(game)
-        print(game.board)
         if game.white_moves == color:
             while True:
                 try:
@@ -36,6 +35,7 @@ def __main__():
                     traceback.print_exc()
                     print("Invalid move")
         else:
+            print("Your opponent's move")
             start, end, promotion = evaluator.get_best_move(game, False, 5)
             game.make_move(start, end, promotion)
             print(Chess.convert_coordinates(start) + " to " + Chess.convert_coordinates(end))
@@ -43,6 +43,5 @@ def __main__():
             if promotion:
                 print(f"Promoted to {promotion}")
 
-    
 __main__()
         

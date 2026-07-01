@@ -60,8 +60,8 @@ class Chess:
                 if (dist_f == 0):
                     if is_white:
                         return dist_r == 1 or (dist_r == 2 and start[1] == 1)
-                    return dist_f == -1 or (dist_f == -2 and start[1] == 6)
-                return abs(dist_f) ==1 and (dist_r == (1 if is_white else -1))
+                    return dist_r == -1 or (dist_f == -2 and start[1] == 6)
+                return abs(dist_f) == 1 and (dist_r == (1 if is_white else -1))
             case "N":
                 return (abs(dist_r) == 2 and abs(dist_f) == 1) or (abs(dist_r) == 1 and abs(dist_f) == 2)
             case "B":
@@ -123,13 +123,19 @@ class Chess:
         
         piece = self.board[start]
 
+        print(f"{start} to {end}: 1")
+
         # check if end position is out of bounds
         if (end[0] < 0 or end[0] > 7 or end[1] < 0 or end[1] > 7):
             return False
         
+        print(f"{start} to {end}: 2")
+        
         # check if they can promote
         if promotion and (piece != "P" or promotion not in ['Q', "R", "B", "N"] or end[1] not in [0, 7]):
             return False
+
+        print(f"{start} to {end}: 3")
         
         if piece[0] == "P" and end[1] in [0, 7] and not promotion:
             return False
@@ -137,13 +143,14 @@ class Chess:
         dist_f = end[0] - start[0]
         dist_r = end[1] - start[1]
 
-        # check if they can castle
-        if not self.can_castle[0 if self.white_moves else 1][0 if dist_f == 2 else 1]:
-            return False
+
+        print(f"{start} to {end}: 4")
         
         # you cant place in a square that already has a piece of the same color
         if self.board[end] is not None and self.board[end][1] == self.white_moves:
             return False
+        
+        print(f"{start} to {end}: 5")
         
         # check if there's anything blocking the path for a rook, bishop, or queen
         if piece[0] != "K" or abs(dist_f) != 2:
@@ -166,13 +173,19 @@ class Chess:
                         return False
                     
             check_board = self.board.copy()
-            if piece == "P" and dist_f != 0 and check_board[end] == None:
+            if piece[0] == "P" and dist_f != 0 and check_board[end] == None:
                 check_board[end[0]][start[1]] = None
+
             
             check_board[end] = check_board[start]
             check_board[start] = None
             return not Chess.is_in_check(check_board, self.white_moves, self.attack_directions, self.king_locations[0 if self.board[start][1] else 1])
-                    
+        print(f"{start} to {end}: 6")
+        # check if they can castle
+        if not self.can_castle[0 if self.white_moves else 1][0 if dist_f == 2 else 1]:
+            return False
+        
+
         # check the spaces between the rook and the king is empty
         if dist_f == 2:
             for i in range(5, 7):
@@ -183,9 +196,10 @@ class Chess:
                 if (self.board[i][start[1]] is not None):
                     return False
         # cannot castle out of a check
-        if not Chess.is_in_check(self.board, self.white_moves, self.attack_directions, self.king_locations[self.board[start][1]]):
+        if Chess.is_in_check(self.board, self.white_moves, self.attack_directions, self.king_locations[0 if self.board[start][1] else 1]):
             return False
         
+        print(7)
         check_board = self.board.copy()
 
         if dist_f == 2:
@@ -195,7 +209,7 @@ class Chess:
         
         # cannot castle through a square that is under attack
         check_board[start] = None
-        if not Chess.is_in_check(check_board, self.white_moves, self.attack_directions, (5, start[1]) if dist_f == 2 else (3, start[1])):
+        if Chess.is_in_check(check_board, self.white_moves, self.attack_directions, (5, start[1]) if dist_f == 2 else (3, start[1])):
             return False
         
 
@@ -208,7 +222,7 @@ class Chess:
             check_board[3, start[1]] = check_board[0, start[1]]
             check_board[0, start[1]] = None
 
-        if not Chess.is_in_check(check_board, self.white_moves, self.attack_directions, end):
+        if Chess.is_in_check(check_board, self.white_moves, self.attack_directions, end):
             return False
 
         return True
@@ -220,7 +234,8 @@ class Chess:
         return False
     
 
-    def convert_coordinates(self, coordinates):
+    @staticmethod
+    def convert_coordinates( coordinates):
         letters = ["A", "B", "C", "D", "E", "F", "G", "H"]
         if isinstance(coordinates, str):
             return (letters.index(coordinates[0]), int(coordinates[1]) - 1)
@@ -272,6 +287,10 @@ class Chess:
 
         self.accumulator.apply_difference(added, removed)
 
+        if (self.board[end][0] == "K"):
+            self.king_locations[self.white_moves] = end
+        self.white_moves = not self.white_moves
+
     
     def get_all_avaliable_moves(self):
         moves = []
@@ -280,16 +299,16 @@ class Chess:
                 if square[0] == "P":
                     i = 5 if self.white_moves else 6
                 else:
-                    i = ["K", "Q", "B", "R", "N"].index(square[0])
+                    i = ["K", "Q", "R", "B", "N"].index(square[0])
 
                 for end in self.move_directions[start[0]][start[1]][i]:
                     if (end[1] in [0, 7]):
-                        for promotion in ["Q", "R", "B", "K"]:
+                        for promotion in ["Q", "R", "B", "N"]:
                             if (self.is_valid_move(start, end, promotion)):
                                 moves.append((start, end, promotion))
                     else:
                         if (self.is_valid_move(start, end , None)):
-                            moves.append((start, end))              
+                            moves.append((start, end, False))              
         return moves
 
     def __str__(self):
@@ -321,7 +340,7 @@ class Chess:
             # log the possible places a knight can jump
             for jump in knight_jumps:
                 new_pos = [file + jump[0], rank + jump[1]]
-                if (new_pos[0] >= 0 and new_pos[0] <= 7 and new_pos[1] >= 0 and new_pos[0] <= 7 ):
+                if (new_pos[0] >= 0 and new_pos[0] <= 7 and new_pos[1] >= 0 and new_pos[1] <= 7 ):
                     log[file][rank].append(new_pos)
 
             # log the possible places a rook or queen can attack
@@ -335,7 +354,7 @@ class Chess:
                     diagonals = [[1, 1], [1, -1], [-1, 1], [-1, -1]]
                     for d in diagonals:
                         new_pos = [file + i * d[0], rank + i * d[1]]
-                        if (new_pos[0] >= 0 and new_pos[0] <= 7 and new_pos[1] >= 0 and new_pos[0] <= 7 ):
+                        if (new_pos[0] >= 0 and new_pos[0] <= 7 and new_pos[1] >= 0 and new_pos[1] <= 7 ):
                             log[file][rank].append(new_pos)
         return log
     
@@ -362,7 +381,7 @@ class Chess:
                 for j in [1, 3]:
                     log[file][rank][j].append((i, i))
                     log[file][rank][j].append((i, -i))
-                    log[file][rank][j].append((-i, -i))
+                    log[file][rank][j].append((-i, i))
                     log[file][rank][j].append((-i, -i))
 
             log[file][rank][4] = [(1, 2), (-1, 2), (1, -2), (-1, -2), (2, 1), (2, -1), (-2, 1), (-2, -1)]
@@ -378,13 +397,16 @@ class Chess:
 
         # remove moves that are out of bounds
         for file, rank in np.ndindex(self.board.shape):
-            for i in range(6):
+            for i in range(7):
                 to_remove = []
-                for move in log[file][rank][i]:
+                for j in range(len(log[file][rank][i])):
+                    move = log[file][rank][i][j]
                     new_pos = (file + move[0], rank + move[1])
                     if new_pos[0] < 0 or new_pos[0] > 7 or new_pos[1] < 0 or new_pos[1] > 7:
                         to_remove.append(move)
-                for move in to_remove:
-                    log[file][rank][i].remove(move)
+                    else:
+                        log[file][rank][i][j] = new_pos
+                for pos in to_remove:
+                    log[file][rank][i].remove(pos)
 
         return log
