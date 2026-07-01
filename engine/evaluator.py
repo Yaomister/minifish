@@ -33,25 +33,44 @@ class Evaluator():
         if not moves:
             return None
         
+        previous_score = 0
+        d = 50
+        
         for current_depth in range(1, depth_limit):
             ordered = [best_move] + [move for move in moves]
-            current_best_move = ordered[0]
-            current_best_move_score = -float("inf") if maximizing else float('inf')
-
-            for start, end, promotion in ordered:
-                game.make_move(start, end, promotion)
-                score = self._minimax(game, float("inf"), -float('inf'), current_depth - 1, not maximizing)
-                game.undo_move()
-
-                if maximizing and score > current_best_move_score:
-                    current_best_move, current_best_move_score = (start, end, promotion), score
-                elif not maximizing and score < current_best_move_score:
-                    current_best_move, current_best_move_score = (start, end, promotion), score
             
+            if (current_depth == 1):
+                alpha, beta = float('inf'), -float('inf')
+            else:
+                alpha, beta = previous_score - d, previous_score + d
 
-            best_move = current_best_move
+            while True:
+                current_best_move = ordered[0]
+                current_best_move_score = -float("inf") if maximizing else float('inf')
+
+                for start, end, promotion in ordered:
+                    game.make_move(start, end, promotion)
+                    score = self._minimax(game, float("inf"), -float('inf'), current_depth - 1, not maximizing)
+                    game.undo_move()
+
+                    if maximizing and score > current_best_move_score:
+                        current_best_move, current_best_move_score = (start, end, promotion), score
+                    elif not maximizing and score < current_best_move_score:
+                        current_best_move, current_best_move_score = (start, end, promotion), score
+
+                if (current_best_move_score <= alpha):
+                    alpha = previous_score - d * 2
+                    d *= 2
+                elif (current_best_move >= beta):
+                    beta = previous_score + d *2
+                    d *=2
+                else:
+                    break
+                
+                previous_score = current_best_move_score
+                best_move = current_best_move
+                d = 50
         
-
         return best_move
                 
 
