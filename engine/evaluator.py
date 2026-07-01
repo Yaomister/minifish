@@ -26,36 +26,40 @@ class Evaluator():
 
     def get_best_move(self, game: Chess, maximizing: bool, depth_limit: int):
 
-        best_move = None
-        best_move_score = -float("inf") if maximizing else float('inf')
 
         moves = game.get_all_avaliable_moves()
+        best_move = moves[0]
 
+        if not moves:
+            return None
+        
+        for current_depth in range(1, depth_limit):
+            ordered = [best_move] + [move for move in moves]
+            current_best_move = ordered[0]
+            current_best_move_score = -float("inf") if maximizing else float('inf')
 
+            for start, end, promotion in ordered:
+                game.make_move(start, end, promotion)
+                score = self._minimax(game, float("inf"), -float('inf'), current_depth - 1, not maximizing)
+                game.undo_move()
 
-        for start, end , promotion in moves:
-            game.make_move(start, end, promotion)
-            score = self._iterative_deepening_search(game, depth_limit, maximizing)
-            game.undo_move()
-            if (maximizing and score > best_move_score) or (not maximizing and score < best_move_score):
-                best_move_score = score
-                best_move = (start, end, promotion)
-   
+                if maximizing and score > current_best_move_score:
+                    current_best_move, current_best_move_score = (start, end, promotion), score
+                elif not maximizing and score < current_best_move_score:
+                    current_best_move, current_best_move_score = (start, end, promotion), score
+            
+
+            best_move = current_best_move
+        
+
         return best_move
+                
 
 
-    def _evaluate(self, game, depth_limit, maximizing):
-        alpha = float('inf')
-        beta = -float('inf')
-        self._minimax(game, alpha, beta, depth_limit - 1, maximizing)
+    def _evaluate(self, board):
+    
         return -1
     
-
-    def _iterative_deepening_search(self, board):
-        alpha = -float('inf')
-        beta = float("inf")
-        
-        return
     
     def _minimax(self, game : Chess, alpha: float, beta:float, depth, maximizing):
 
