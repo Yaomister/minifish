@@ -358,21 +358,21 @@ class Chess:
             knight_jumps = [(1, 2), (2, 1), (-1, 2), (-1, -2), (1, -2), (-2, 1), (-2, -1), (2, -1)]
             # log the possible places a knight can jump
             for jump in knight_jumps:
-                new_pos = [file + jump[0], rank + jump[1]]
+                new_pos = (file + jump[0], rank + jump[1])
                 if (new_pos[0] >= 0 and new_pos[0] <= 7 and new_pos[1] >= 0 and new_pos[1] <= 7 ):
                     log[file][rank].append(new_pos)
 
             # log the possible places a rook or queen can attack
             for i in range(8):
                 if (i != file):
-                    log[file][rank].append([i, rank])
+                    log[file][rank].append((i, rank))
                 if (i != rank):
-                    log[file][rank].append([file, i])
+                    log[file][rank].append((file, i))
                 # log the possible places a bishop, queen, king, or pawn can attack
                 if (i != 0):
-                    diagonals = [[1, 1], [1, -1], [-1, 1], [-1, -1]]
+                    diagonals = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
                     for d in diagonals:
-                        new_pos = [file + i * d[0], rank + i * d[1]]
+                        new_pos = (file + i * d[0], rank + i * d[1])
                         if (new_pos[0] >= 0 and new_pos[0] <= 7 and new_pos[1] >= 0 and new_pos[1] <= 7 ):
                             log[file][rank].append(new_pos)
         return log
