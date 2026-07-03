@@ -20,10 +20,9 @@ def get_move(game: Chess, san):
     if not move:
         return None, None, None
     
-    piece = move.group(1)
+    piece = move.group(1) or "P"
     dfile  = move.group(2)
     drank = move.group(3)
-    capture = move.group(4) == "x"
     end_file, end_rank = game.convert_coordinates(move.group(5).capitalize())
     promotion = move.group(6)
 
@@ -55,22 +54,22 @@ def get_feature_indicies(game : Chess):
                 square = board[file][rank]
                 if not square or square[0] == 'K':
                     continue
-                features[perspective].append(Accumulator.get_index(king_square, (file, rank), square[0], square[1], perspective))
+                features[perspective].append(Accumulator.get_index(king_square,  (file, rank), square[0], square[1], perspective))
     
 
-    white = features[True] + [-1] * len(features[True])
-    black = features[False] + [-1] * len(features[False])
+    white = features[True] + [-1] * (30 - len(features[True]))
+    black = features[False] + [-1] * (30 - len(features[False]))
 
     return white, black
     
 
 def process_game(current_headers, current_moves):
     if "BOT" in current_headers.get("WhiteTitle", "") or "BOT" in current_headers.get("BlackTitle", ""):
-        return [], []
+        return [], [], [], []
     if current_headers.get("Termination", "") == "Time forfeit":
-        return [], []
+        return [], [], [], []
     if "Variant" in current_headers:
-        return [], []
+        return [], [], [], []
     
     game = Chess(accumulator = Accumulator(np.zeros((256, 40960)), np.zeros(256)))
 
@@ -84,18 +83,20 @@ def process_game(current_headers, current_moves):
         comment, word = token.group(1), token.group(2)
         if comment is not None:
             if  just_played:
-                evaluation = re.search(r'\[%eval ([^\]]+)\]', comment).group(1)
-                if "#" in evaluation:
-                    score = -1.0 if "-" in evaluation else 1.0
-                else:
-                    score = math.tanh(float(evaluation))
-                
-                white, black = get_feature_indicies(game)
+                move = re.search(r'\[%eval ([^\]]+)\]', comment)
+                if move:
+                    evaluation = move.group(1)
+                    if "#" in evaluation:
+                        score = -1.0 if "-" in evaluation else 1.0
+                    else:
+                        score = math.tanh(float(evaluation))
+                    
+                    white, black = get_feature_indicies(game)
 
-                white_perspective.append(white)
-                black_perspective.append(black)
-                color.append(game.turn)
-                game_scores.append(score)
+                    white_perspective.append(white)
+                    black_perspective.append(black)
+                    color.append(game.turn)
+                    game_scores.append(score)
 
             just_played = False
             continue
@@ -110,16 +111,17 @@ def process_game(current_headers, current_moves):
             start, end, promotion = get_move(game, move)
             if start and end:
                 game.make_move(start, end, promotion)
+                just_played = True
             else:
                 break
         except Exception as e:
             print(e)
             traceback.print_exc()
-    return scores, boards
+    return game_scores, black_perspective, white_perspective, color
 
-def save_batch(boards, scores, batch_index):
+def save_batch(scores, black_perspective, white_perspective, colors, batch_index):
     path = os.path.join("./training/", f"dataset_{batch_index}.npz")
-    np.savez(path, boards=np.array(boards, dtype=np.float32), scores = np.array(scores, dtype=np.float32))
+    np.savez(path, white_perspective = np.array(white_perspective, dtype=np.int32), black_perspective=np.array(black_perspective, dtype=np.int32), scores = np.array(scores, dtype=np.float32), colors = np.array(colors, dtype=np.bool))
     print(f"saved batch {batch_index}")
     return
 
@@ -136,7 +138,9 @@ if __name__ == "__main__":
         number_of_games_processed = 0
 
         scores = []
-        boards = []
+        black_perspective = []
+        white_perspective = []
+        colors = []
 
         while True:
 
@@ -158,15 +162,19 @@ if __name__ == "__main__":
                     current_headers[key] = value
 
                 elif line == "":
-                    game_scores, game_boards = process_game(current_headers, current_moves)
-                    scores.append(game_scores)
-                    boards.append(game_boards)
+                    game_scores, game_black_perspective, game_white_perspective, game_color = process_game(current_headers, current_moves)
+                    scores.extend(game_scores)
+                    black_perspective.extend(game_black_perspective)
+                    white_perspective.extend(game_white_perspective)
+                    colors.extend(game_color)
                     current_headers = {}
                     current_moves = []
                     if len(scores) > 10000000:
-                        save_batch(boards, scores, batch_index)
+                        save_batch(scores, black_perspective, white_perspective, colors, batch_index)
                         batch_index += 1
-                        boards.clear()
+                        black_perspective.clear()
+                        white_perspective.clear()
+                        colors.clear()
                         scores.clear()
                 else:
                     current_moves.append(line)

@@ -123,6 +123,9 @@ class Chess:
         
         piece = self.board[start[0]][start[1]]
 
+        if piece is None:
+            return False
+
         # check if end position is out of bounds
         if (end[0] < 0 or end[0] > 7 or end[1] < 0 or end[1] > 7):
             return False
@@ -251,21 +254,21 @@ class Chess:
 
         if self.board[start][0] == "P":
             # capturing en passant
-            if (start[0] - end[0]) != 0 and self.board[end][0] == None:
+            if (start[0] - end[0]) != 0 and self.board[end] is None:
                 en_passant_square = (end[0], start[1])
-                removed.append((en_passant_square, self.board[en_passant_square][0], self.board[en_passant_square][1]))
-                self.board[en_passant_square] = None
+                if self.board[en_passant_square] is not None:
+                    removed.append((en_passant_square, self.board[en_passant_square][0], self.board[en_passant_square][1]))
+                    self.board[en_passant_square] = None
             if (abs(start[1] - end[1]) == 2):
                 self.en_passant = end[0]
             
         # castling
         if (self.board[start][0] == 'K') and abs(end[0] - start[0]) == 2:
-
             # revoke castling rights
             self.can_castle[self.turn] = [False, False]
 
-            castling_end = (5, start[1]) if start[0] - end[0] < 0 else (0, start[1])
-            castling_start = (7, start[1]) if start[0] - end[0] < 0 else (3, start[1])
+            castling_end = (5, start[1]) if start[0] - end[0] < 0 else (3, start[1])
+            castling_start = (7, start[1]) if start[0] - end[0] < 0 else (0, start[1])
 
             added.append((castling_end, self.board[castling_start][0], self.board[castling_start][1]))
             self.board[castling_end] = self.board[castling_start]
@@ -281,11 +284,15 @@ class Chess:
         self.board[start] = None
 
         if (promotion):
-            self.board[end][0] = promotion
+            self.board[end] = (promotion, self.board[end][1])
 
         added.append((end, self.board[end][0], self.board[end][1]))
 
-        self.accumulator.apply_difference(added, removed)
+        if self.board[end][0] == "K":
+            self.king_locations[self.turn] = end
+            self.accumulator.refresh(self.board)
+        else:
+            self.accumulator.apply_difference(added, removed)
 
 
         if (self.board[end][0] == "K"):

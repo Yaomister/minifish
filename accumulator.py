@@ -10,12 +10,17 @@ class Accumulator():
 
     @staticmethod
     def get_index(square_with_king, square_with_piece, piece_type, is_white, perspective):
+        if type(square_with_king) == tuple:
+            square_with_king = square_with_king[0] * 8 + square_with_king[1]
+        if type(square_with_piece) == tuple:
+            square_with_piece = square_with_piece[0] * 8 + square_with_piece[1]
+        
         piece_weights = {
             "P": 0,
             "N": 1,
             "B": 2,
             "R": 3,
-            "Q": 4
+            "Q": 4,
         }
         if not perspective:
             square_with_king = square_with_king ^ 56
@@ -39,9 +44,7 @@ class Accumulator():
 
         self.accumulator[perspective] = accumulator
 
-    
-    def _convert_coordinates_to_tensor_index(self, square):
-        return square[0] * 8 + square[1]
+
     
     def refresh(self, board):
         self._refresh_accumulation(board, True)
@@ -52,9 +55,9 @@ class Accumulator():
         for perspective in (True, False):
             square_with_king = self.square_with_king[perspective]
             for square, piece, is_white in added:
-                self.accumulator[perspective] += self.weights[:, self.get_index(square_with_king, self._convert_coordinates_to_tensor_index(square), piece, is_white, perspective)]
+                self.accumulator[perspective] += self.weights[:, self.get_index(square_with_king, square, piece, is_white, perspective)]
             for square, piece, is_white in removed:
-                self.accumulator[perspective] -= self.weights[:, self.get_index(square_with_king, self._convert_coordinates_to_tensor_index(square), piece, is_white, perspective)]
+                self.accumulator[perspective] -= self.weights[:, self.get_index(square_with_king, square, piece, is_white, perspective)]
 
     def get_logits(self, perspective):
         return np.concatenate(self.accumulator[perspective], self.accumulator[not perspective])
