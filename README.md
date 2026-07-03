@@ -37,7 +37,7 @@ A few points should be noted:
 
 ## Acknowledgements
 
-The NNUE architecture originates with Yu Nasu's 2018 paper and its adoption into [Stockfish](https://github.com/official-stockfish/Stockfish); the [nnue-pytorch docs](https://github.com/official-stockfish/nnue-pytorch/blob/master/docs/nnue.md) are the best explanation of it anywhere.
+The NNUE architecture originates with Yu Nasu's 2018 paper and its adoption into [Stockfish](https://github.com/official-stockfish/Stockfish). The [nnue-pytorch docs](https://github.com/official-stockfish/nnue-pytorch/blob/master/docs/nnue.md) are the best explanation of it anywhere.
 
 Training data comes from the wonderful open [Lichess database](https://database.lichess.org/).
 
