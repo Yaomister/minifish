@@ -52,9 +52,12 @@ class Chess:
     def is_reachable(board, start, dist_f, dist_r):
         piece, is_white = board[start]
 
+        if not piece:
+            return False
+
         if (dist_f == 0 and dist_r == 0):
             return False
-     
+    
         match piece:
             case "P":
                 if (dist_f == 0):

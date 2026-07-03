@@ -11,4 +11,4 @@ cd $SLURM_SUBMIT_DIR
 mkdir -p training
 mkdir -p logs
 source .venv/bin/activate
-python3 -m data.parser
+python3 -m data/parser
