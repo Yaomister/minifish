@@ -8,9 +8,15 @@ from accumulator import Accumulator
 import traceback
 
 
-def get_move(game: Chess, san):
+def get_move(game: Chess, san: str):
+    """
+    Parse the move from algebraic notation (san).
+    """
+
+    # use regex to split up the algebraic notation
     regex = "^([NBRQK])?([a-h])?([1-8])?(x)?([a-h][1-8])(?:=([NBRQ]))?$"
     turn = game.turn
+    # castling
     if san == "O-O" or san == "O-O-O":
         rank = 0 if turn else 7
         return (4, rank), (6, rank) if san == "O-O" else (2, rank), None
@@ -20,7 +26,9 @@ def get_move(game: Chess, san):
     if not move:
         return None, None, None
     
+    # the piece moved
     piece = move.group(1) or "P"
+    # when the file or rank is ambiguous
     dfile  = move.group(2)
     drank = move.group(3)
     end_file, end_rank = game.convert_coordinates(move.group(5).capitalize())
@@ -41,6 +49,9 @@ def get_move(game: Chess, san):
     return None, None, None
 
 def get_feature_indicies(game : Chess):
+    """
+    Get the feature index of the board.
+    """
     board = game.board
 
     kings_locations = game.king_locations
@@ -56,14 +67,18 @@ def get_feature_indicies(game : Chess):
                     continue
                 features[perspective].append(Accumulator.get_index(king_square,  (file, rank), square[0], square[1], perspective))
     
-
-    white = features[True] + [-1] * (30 - len(features[True]))
-    black = features[False] + [-1] * (30 - len(features[False]))
+    # add padding because we want the tensors to stack when training
+    white = features[True] + [40960] * (30 - len(features[True]))
+    black = features[False] + [40960] * (30 - len(features[False]))
 
     return white, black
     
 
 def process_game(current_headers, current_moves):
+    """
+    Process a game.
+    """
+
     if "BOT" in current_headers.get("WhiteTitle", "") or "BOT" in current_headers.get("BlackTitle", ""):
         return [], [], [], []
     if current_headers.get("Termination", "") == "Time forfeit":
@@ -120,18 +135,19 @@ def process_game(current_headers, current_moves):
     return game_scores, black_perspective, white_perspective, color
 
 def save_batch(scores, black_perspective, white_perspective, colors, batch_index):
+    """
+    Save the batch.
+    """
     path = os.path.join("./training/", f"dataset_{batch_index}.npz")
     np.savez(path, white_perspective = np.array(white_perspective, dtype=np.int32), black_perspective=np.array(black_perspective, dtype=np.int32), scores = np.array(scores, dtype=np.float32), colors = np.array(colors, dtype=np.bool))
     print(f"saved batch {batch_index}")
-    return
 
 
 if __name__ == "__main__":
     batch_index = 0
 
-
-
     with open(os.path.join("data/lichess.zst"), "rb") as f:
+        # stream it as bytes
         dctx = zstd.ZstdDecompressor()
         stream = dctx.stream_reader(f)
         buffer = b""
@@ -143,29 +159,29 @@ if __name__ == "__main__":
         colors = []
 
         while True:
-
             current_headers = {}
             current_moves = []
-            # 64 bytes
+            # read 64 vbutes at once
             chunked = stream.read(65536)
             if not chunked:
                 break
             buffer += chunked
             lines = buffer.split(b"\n")
             buffer = lines[-1]
-
+            # we add a buffer because 64 bytes might result in half a command at the end
             for line in lines[:-1]:
                 line = line.decode("utf-8", errors="ignore").strip()
+                # a move
                 if line.startswith("["):
                     key = re.match(r'\[(\w+)', line).group(1)
                     value = re.search(r'"(.+)"', line).group(1)
                     current_headers[key] = value
-
+                # end of game
                 elif line == "":
                     game_scores, game_black_perspective, game_white_perspective, game_color = process_game(current_headers, current_moves)
-                    scores.extend(game_scores)
                     black_perspective.extend(game_black_perspective)
                     white_perspective.extend(game_white_perspective)
+                    scores.extend(game_scores)
                     colors.extend(game_color)
                     current_headers = {}
                     current_moves = []

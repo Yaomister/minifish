@@ -2,12 +2,13 @@ import numpy as np
 from accumulator import Accumulator
 
 class Chess:
-
+    """
+    The chess engine.
+    """
     def __init__(self, accumulator : Accumulator , test_setup = None):
         # 8 x 8 board, filled with tuples representing (piece, color)
         self.board = np.full((8, 8), None, dtype=object)
         self.turn = True
-        # can player castle? each value represents short-castling and long-castling for white and black
         self.can_castle  = [[True, True], [True, True]]
         # if the previous player just pushed a pawn two squares, the opposing player can do en passant
         self.en_passant = False
@@ -41,15 +42,14 @@ class Chess:
         self.attack_directions = self._compute_possible_attack_directions()
         self.move_directions = self._compute_possible_move_directions()
 
-
-
         self.accumulator = accumulator
-        accumulator.refresh(self.board)
-
-    
+        accumulator.reset(self.board)
 
     @staticmethod
     def is_reachable(board, start, dist_f, dist_r):
+        """
+        Tests whether the given move is reachable on the board, assuming no obstacles.
+        """
         piece, is_white = board[start]
 
         if not piece:
@@ -78,6 +78,10 @@ class Chess:
             
     @staticmethod
     def is_in_check(board, color, attack_directions, king_position):
+        """
+        Checks whether the board is in check state.
+        """
+
         for (file, rank) in attack_directions[king_position[0]][king_position[1]]:
             piece_at_attacking_pos = board[file][rank]
             if piece_at_attacking_pos and piece_at_attacking_pos[1] != color:
@@ -122,7 +126,19 @@ class Chess:
                             return True
         return False
     
+    @staticmethod
+    def convert_coordinates( coordinates):
+        """Convert the coordinate to alphabetic notation."""
+        letters = ["A", "B", "C", "D", "E", "F", "G", "H"]
+        if isinstance(coordinates, str):
+            return (letters.index(coordinates[0]), int(coordinates[1]) - 1)
+        if isinstance(coordinates, tuple):
+            return letters[coordinates[0]] + str(coordinates[1] + 1)
+        
+        raise TypeError()
+    
     def is_valid_move(self, start, end, promotion = None):
+        """Check that the move is legal."""
         
         piece = self.board[start[0]][start[1]]
 
@@ -175,12 +191,12 @@ class Chess:
             check_board[end] = check_board[start]
             check_board[start] = None
             return not Chess.is_in_check(check_board, self.turn, self.attack_directions, self.king_locations[0 if self.board[start[0]][start[1]][1] else 1])
-        # check if they can castle
+        
+        # check if they can castle at all
         if not self.can_castle[0 if self.turn else 1][0 if dist_f == 2 else 1]:
             return False
         
-
-        # check the spaces between the rook and the king is empty
+        # cannot castle with a piece in between the king and rook
         if dist_f == 2:
             for i in range(5, 7):
                 if (self.board[i][start[1]] is not None):
@@ -204,7 +220,6 @@ class Chess:
         check_board[start] = None
         if Chess.is_in_check(check_board, self.turn, self.attack_directions, (5, start[1]) if dist_f == 2 else (3, start[1])):
             return False
-        
 
         if dist_f == 2:
             check_board[6, start[1]] = self.board[start]
@@ -215,30 +230,79 @@ class Chess:
             check_board[3, start[1]] = check_board[0, start[1]]
             check_board[0, start[1]] = None
 
+        # cannot castle into a check
         if Chess.is_in_check(check_board, self.turn, self.attack_directions, end):
             return False
 
         return True
     
     def make_move(self, start, end, promotion):
+        """Play the move."""
         if (self.is_valid_move(start, end, promotion)):
             self._play_move(start, end, promotion)
             return True
         return False
     
 
-    @staticmethod
-    def convert_coordinates( coordinates):
-        letters = ["A", "B", "C", "D", "E", "F", "G", "H"]
-        if isinstance(coordinates, str):
-            return (letters.index(coordinates[0]), int(coordinates[1]) - 1)
-        if isinstance(coordinates, tuple):
-            return letters[coordinates[0]] + str(coordinates[1] + 1)
-        
-        raise TypeError()
+    def undo_move(self):
+        """Undo the last move."""
+        record = self.previous_moves.pop()
 
+        self.accumulator.apply_difference(added=record['removed'], removed=record['added'])
+
+        self.turn = record['turn']
+        self.en_passant = record["en_passant"]
+        self.king_locations = record["king_locations"]
+        self.can_castle = record["can_castle"]
+
+        for (square, letter, color) in record['added']:
+            self.board[square] = (letter, color)
+        for (square, _, _) in record["removed"]:
+            self.board[square] = None
+
+    
+    def get_all_avaliable_moves(self):
+        """Return all moves playable on this board."""
+        moves = []
+        for start, square in np.ndenumerate(self.board):
+            if square and square[1] == self.turn:
+                if square[0] == "P":
+                    i = 5 if self.turn else 6
+                else:
+                    i = ["K", "Q", "R", "B", "N"].index(square[0])
+                for end in self.move_directions[start[0]][start[1]][i]:
+                    if (end[1] in [0, 7]):
+                        for promotion in ["Q", "R", "B", "N"]:
+                            if (self.is_valid_move(start, end, promotion)):
+                                moves.append((start, end, promotion))
+                    else:
+                        if (self.is_valid_move(start, end , None)):
+                            moves.append((start, end, False))              
+        return moves
+
+    def __str__(self):
+        display = "\x1b[31m"
+        display += "White's Move" if self.turn else "Black's Move"
+        display += "\x1b[0m\n"
+        for i in range(7, -1, -1):
+            display +=  "\x1b[31m" + str(i + 1) + "\x1b[0m"
+            for j in range(8):
+                if not self.board[j, i]:
+                    display += "  "
+                elif self.board[j, i][1]:
+                    display += f" \x1b[37m{self.board[j, i][0]}\x1b[0m"
+                else:
+                    display += f" \x1b[30m{self.board[j, i][0]}\x1b[0m"
+            display += "\n"
+        display += " "
+        for i in range(8):
+            display += " \x1b[31m" + "ABCDEFGH"[i] + "\x1b[0m"
+
+        return display
+        
 
     def _play_move(self, start, end, promotion):
+        """Play the move."""
 
         added, removed = [], []
 
@@ -251,7 +315,7 @@ class Chess:
             "king_locations": list(self.king_locations),
         })
 
-        # reset enpassant
+        # reset en passant
         if self.en_passant:
             self.en_passant = False
 
@@ -293,76 +357,17 @@ class Chess:
 
         if self.board[end][0] == "K":
             self.king_locations[self.turn] = end
-            self.accumulator.refresh(self.board)
+            self.accumulator.reset(self.board)
         else:
             self.accumulator.apply_difference(added, removed)
 
-
         if (self.board[end][0] == "K"):
             self.king_locations[0 if self.turn else 1] = end
-        
 
         self.turn = not self.turn
 
-    def undo_move(self):
-        record = self.previous_moves.pop()
-
-        self.accumulator.apply_difference(added=record['removed'], removed=record['added'])
-
-
-        self.turn = record['turn']
-        self.en_passant = record["en_passant"]
-        self.king_locations = record["king_locations"]
-        self.can_castle = record["can_castle"]
-
-        for (square, letter, color) in record['added']:
-            self.board[square] = (letter, color)
-        for (square, _, _) in record["removed"]:
-            self.board[square] = None
-
-    
-    def get_all_avaliable_moves(self):
-        moves = []
-        for start, square in np.ndenumerate(self.board):
-            if square and square[1] == self.turn:
-                if square[0] == "P":
-                    i = 5 if self.turn else 6
-                else:
-                    i = ["K", "Q", "R", "B", "N"].index(square[0])
-
-                for end in self.move_directions[start[0]][start[1]][i]:
-                    if (end[1] in [0, 7]):
-                        for promotion in ["Q", "R", "B", "N"]:
-                            if (self.is_valid_move(start, end, promotion)):
-                                moves.append((start, end, promotion))
-                    else:
-                        if (self.is_valid_move(start, end , None)):
-                            moves.append((start, end, False))              
-        return moves
-
-    def __str__(self):
-        display = "\x1b[31m"
-        display += "White's Move" if self.turn else "Black's Move"
-        display += "\x1b[0m\n"
-        for i in range(7, -1, -1):
-            display +=  "\x1b[31m" + str(i + 1) + "\x1b[0m"
-            for j in range(8):
-                if not self.board[j, i]:
-                    display += "  "
-                elif self.board[j, i][1]:
-                    display += f" \x1b[37m{self.board[j, i][0]}\x1b[0m"
-                else:
-                    display += f" \x1b[30m{self.board[j, i][0]}\x1b[0m"
-            display += "\n"
-        display += " "
-        for i in range(8):
-            display += " \x1b[31m" + "ABCDEFGH"[i] + "\x1b[0m"
-
-        return display
-        
-
-    # precompute possible positions to be attacked from
     def _compute_possible_attack_directions(self):
+        """Precompute the possible positions each square is able to be attacked from."""
         log = [[[] for _ in range(8)] for _ in range(8)]
         for file, rank in np.ndindex(self.board.shape):
             knight_jumps = [(1, 2), (2, 1), (-1, 2), (-1, -2), (1, -2), (-2, 1), (-2, -1), (2, -1)]
@@ -387,8 +392,8 @@ class Chess:
                             log[file][rank].append(new_pos)
         return log
     
-    # precomplute possible positions it can move to 
     def _compute_possible_move_directions(self):
+        """Precompute the possible position each piece at each square is able to move to."""
         # K, Q, R, B, N, white P, black P
         dimension = len(self.board)
         log = [[[[] for _ in range(7)] for _ in range(dimension)] for _ in range(dimension)]

@@ -6,6 +6,9 @@ from accumulator import Accumulator
 
 
 class Evaluator():
+    """
+    The evaluator.
+    """
 
     def __init__(self, file_path = None):
         model = NNEU()
@@ -25,8 +28,7 @@ class Evaluator():
 
 
     def get_best_move(self, game: Chess, maximizing: bool, depth_limit: int):
-
-
+        """Get the best move to play."""
         moves = game.get_all_avaliable_moves()
         best_move = moves[0]
 
@@ -74,14 +76,25 @@ class Evaluator():
         return best_move
                 
 
-
     def _evaluate(self, board):
-    
+        """
+        Use the model to evaluate the board.
+        """
         return -1
+    
+    def build_accumulator(self):
+        """
+        Set up the accumulator.
+        """
+        accumulator =  Accumulator(self.model.feature_extractor.weight.detach().cpu().numpy(), self.model.feature_extractor.bias.detach().cpu().numpy())
+        return accumulator
     
     
     def _minimax(self, game : Chess, alpha: float, beta:float, depth, maximizing):
-
+        """
+        The adversarial search algorithm.
+        """
+        
         moves = game.get_all_avaliable_moves()
 
         if not moves:
@@ -112,6 +125,3 @@ class Evaluator():
                     break
             return beta
         
-    def build_accumulator(self):
-        accumulator =  Accumulator(self.model.feature_extractor.weight.detach().cpu().numpy(), self.model.feature_extractor.bias.detach().cpu().numpy())
-        return accumulator

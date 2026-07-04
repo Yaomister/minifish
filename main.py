@@ -1,11 +1,12 @@
 from chess import Chess
 from evaluator import Evaluator
 import traceback
-from accumulator import Accumulator
 
 
 def __main__():
-    """run the game loop."""
+    """
+    Run the game loop.
+    """
     print("Chess engine starting")
     evaluator = Evaluator()
     accumulator = evaluator.build_accumulator()

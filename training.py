@@ -11,8 +11,9 @@ training_epochs = 100
 learning_rate = 1e-3
 split = 0.1
 
-
 def set_up_dataset():
+    """Load the dataset."""
+
     batches = glob.glob("./data/training/dataset_*.npz")
     assert batches, "no training data found"
 
@@ -50,15 +51,11 @@ if __name__ == "__main__":
     train_n = len(dataset) - val_n
     train_data, val_data = random_split(dataset=dataset, lengths=[train_n, val_n])
 
-
     train_loader = DataLoader(dataset=train_data, batch_size=256, shuffle=True)
     val_loader = DataLoader(dataset=val_data, batch_size=256, shuffle=False)
     
-
-    
     model = NNEU().to(device= "cuda" if torch.cuda.is_available() else "cpu")
     optimizer = Adam(params=model.parameters(), lr=1e-3)
-
 
     for epoch in range(1, training_epochs + 1):
         model.train()
