@@ -2,7 +2,7 @@
 
 I love chess, but I'm terrible at it.
 
-minifish is a lightweight chess evaluation network. It is a chess engine powere dby an efficient update neural network (NNEU), the same core idea behind Stockfish's evaluation, scaled down many times.
+minifish is a lightweight chess evaluation network. It is a chess engine powered by an efficient update neural network (NNEU), the same core idea behind Stockfish's evaluation, scaled down many times.
 
 ## Design notes
 
@@ -11,7 +11,7 @@ minifish is built on one idea: **the neural network's first layer and the engine
 A few points should be noted:
 
 - **The dataset stores indices, not tensors.** A position is ~30 integers (one per non-king piece), not a dense board grid (roughtly 17x smaller and independent of the neural network's width.)
-- **Moving the king triggers a full accumulator reset.** The king's square is baked into every feature index, so when the king moves, the acc rebuilds.
+- **Moving the king triggers a full accumulator reset.** The king's square is baked into every feature index, so when the king moves, the accumulator rebuilds.
 - **The score is trained in tanh space.** Stockfish evalulation scores are unbounded and mate is infinite; `tanh(eval/4)` compresses blowouts.
 
 ## File structure
