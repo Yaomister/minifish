@@ -139,7 +139,7 @@ def save_batch(scores, black_perspective, white_perspective, colors, batch_index
     Save the batch.
     """
     path = os.path.join("./training/", f"dataset_{batch_index}.npz")
-    np.savez(path, white_perspective = np.array(white_perspective, dtype=np.int32), black_perspective=np.array(black_perspective, dtype=np.int32), scores = np.array(scores, dtype=np.float32), colors = np.array(colors, dtype=np.bool))
+    np.savez(path, white_perspective = np.array(white_perspective, dtype=np.int32), black_perspective=np.array(black_perspective, dtype=np.int32), scores = np.array(scores, dtype=np.float32), colors = np.array(colors, dtype=np.bool_))
     print(f"saved batch {batch_index}")
 
 
@@ -183,9 +183,14 @@ if __name__ == "__main__":
                     white_perspective.extend(game_white_perspective)
                     scores.extend(game_scores)
                     colors.extend(game_color)
+
+                    number_of_games_processed += 1                             
+                    if number_of_games_processed % 10000 == 0:
+                        print(f"games: {number_of_games_processed}, positions: {len(scores)}", flush=True)
+
                     current_headers = {}
                     current_moves = []
-                    if len(scores) > 10000000:
+                    if len(scores) > 1000000:
                         save_batch(scores, black_perspective, white_perspective, colors, batch_index)
                         batch_index += 1
                         black_perspective.clear()
@@ -194,3 +199,5 @@ if __name__ == "__main__":
                         scores.clear()
                 else:
                     current_moves.append(line)
+        if scores:
+            save_batch(scores, black_perspective, white_perspective, colors, batch_index)
