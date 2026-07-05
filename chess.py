@@ -361,9 +361,6 @@ class Chess:
         else:
             self.accumulator.apply_difference(added, removed)
 
-        if (self.board[end][0] == "K"):
-            self.king_locations[0 if self.turn else 1] = end
-
         self.turn = not self.turn
 
     def _compute_possible_attack_directions(self):
