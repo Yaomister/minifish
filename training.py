@@ -14,7 +14,7 @@ split = 0.1
 def set_up_dataset():
     """Load the dataset."""
 
-    batches = glob.glob("./data/training/dataset_*.npz")
+    batches = glob.glob("./training/dataset_*.npz")
     assert batches, "no training data found"
 
     all_board_black_perspectives = []
