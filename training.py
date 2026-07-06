@@ -34,8 +34,8 @@ def set_up_dataset():
     scores = np.concat(all_scores, axis=0)
     colors = np.concat(all_colors, axis=0)
 
-    t_board_black_perspectives = torch.from_numpy(board_black_perspectives)
-    t_board_white_perspectives = torch.from_numpy(board_white_perspectives)
+    t_board_black_perspectives = torch.from_numpy(board_black_perspectives).long()
+    t_board_white_perspectives = torch.from_numpy(board_white_perspectives).long()
     t_scores = torch.from_numpy(scores)
     t_colors = torch.from_numpy(colors)
 
@@ -54,9 +54,9 @@ if __name__ == "__main__":
     train_loader = DataLoader(dataset=train_data, batch_size=256, shuffle=True)
     val_loader = DataLoader(dataset=val_data, batch_size=256, shuffle=False)
     
-    model = NNEU().to(device= "cuda" if torch.cuda.is_available() else "cpu")
+    model = NNEU().to(device)
     optimizer = Adam(params=model.parameters(), lr=1e-3)
-    scheduler = lr_scheduler.CosineAnnealingLR(optimizer, eta_min=1e-5)
+    scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=training_epochs, eta_min=1e-5)
     loss_fn = MSELoss()
 
     best_val = float('inf')
@@ -65,21 +65,23 @@ if __name__ == "__main__":
         model.train()
         train_loss = 0
         n = 0
-        for  board_black_perspective, board_white_perspective, score, color in (train_data):
+        for  board_black_perspective, board_white_perspective, score, color in train_loader:
             board_black_perspective, board_white_perspective, score, color = board_black_perspective.to(device), board_white_perspective.to(device), score.to(device), color.to(device)
             prediction = model(board_white_perspective, board_black_perspective, color)
-            loss = loss_fn(prediction, score)
+            loss = loss_fn(prediction, score.unsqueeze(1))
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             train_loss += loss.item()
             n += 1
 
+        train_loss /= n
+
         model.eval()
 
         val_loss = 0.0
         with torch.no_grad():
-            for  board_black_perspective, board_white_perspective, score, color in (val_data):
+            for  board_black_perspective, board_white_perspective, score, color in val_loader:
                 board_black_perspective, board_white_perspective, score, color = board_black_perspective.to(device), board_white_perspective.to(device), score.to(device), color.to(device)
                 val_loss += loss_fn(model(board_white_perspective, board_black_perspective, color), score).item()
 
@@ -88,6 +90,7 @@ if __name__ == "__main__":
 
         if val_loss < best_val:
             best_val = val_loss
+            torch.save(model.state_dict(), "weights/model.pt")
 
     print(f"\nDone. Best val_loss: {best_val:.6f}")
-    torch.save(model.state_dict(), "weights/model.pt")
+    torch.save(model.state_dict(), "weights/model_last.pt")
