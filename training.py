@@ -1,5 +1,6 @@
-import torch
+import os
 import glob
+import torch
 from nneu import NNEU
 import numpy as np
 from torch.optim import Adam
@@ -44,6 +45,7 @@ def set_up_dataset():
 
 
 if __name__ == "__main__":
+    os.makedirs("weights", exist_ok=True)
     device = torch.device("mps") if torch.backends.mps.is_available() else  torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     dataset = set_up_dataset()
@@ -83,7 +85,7 @@ if __name__ == "__main__":
         with torch.no_grad():
             for  board_black_perspective, board_white_perspective, score, color in val_loader:
                 board_black_perspective, board_white_perspective, score, color = board_black_perspective.to(device), board_white_perspective.to(device), score.to(device), color.to(device)
-                val_loss += loss_fn(model(board_white_perspective, board_black_perspective, color), score).item()
+                val_loss += loss_fn(model(board_white_perspective, board_black_perspective, color), score.unsqueeze(1)).item()
 
         scheduler.step()
         print(f"Epoch {epoch:3d}  train_loss={train_loss:.6f}  val_loss={val_loss:.6f}  lr={optimizer.param_groups[0]['lr']:.2e}")
