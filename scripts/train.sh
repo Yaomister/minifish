@@ -8,7 +8,11 @@
 
 
 cd $SLURM_SUBMIT_DIR
+module load python/3.13.5
+
 mkdir -p training
 mkdir -p logs
+
 source .venv/bin/activate
+
 python3 -m training.py
