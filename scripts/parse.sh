@@ -8,10 +8,14 @@
 
 
 cd $SLURM_SUBMIT_DIR
+
 cd ~/minifish
 module load python/3.13.5
+
 mkdir -p training
 mkdir -p logs
+
 source .venv/bin/activate
+
 python3 --version
 python3 -m data.parser
