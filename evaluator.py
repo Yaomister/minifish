@@ -10,21 +10,22 @@ class Evaluator():
     The evaluator.
     """
 
-    def __init__(self, file_path = None):
-        model = NNEU()
+    def __init__(self, file_path):
         self.device = (torch.device("mps") if torch.backends.mps.is_available() else 
                         torch.device("cuda") if torch.cuda.is_available() else 
                         torch.device("cpu")
         )
 
-        if (file_path):
-            model.to(self.device)
-            saved_state_dict = torch.load(file_path)
-            model.load_state_dict(saved_state_dict)
-            model.eval()
-            print(f"loaded in model from ${file_path}")
+        assert file_path is not None, "Need the model weights."
 
-        self.model = model
+        self.model = NNEU()
+        self.model.to(self.device)
+        saved_state_dict = torch.load(file_path, map_location=self.device, weights_only=True)
+        self.model.load_state_dict(saved_state_dict)
+        self.model.eval()
+
+        print(f"loaded in model from ${file_path}")
+
 
 
     def get_best_move(self, game: Chess, maximizing: bool, depth_limit: int):
@@ -86,7 +87,9 @@ class Evaluator():
         """
         Set up the accumulator.
         """
-        accumulator =  Accumulator(self.model.feature_extractor.weight.detach().cpu().numpy(), self.model.feature_extractor.bias.detach().cpu().numpy())
+
+        print(self.model.feature_extractor)
+        accumulator =  Accumulator(self.model.feature_extractor.weight.detach().cpu().numpy(), self.model.feature_bias.weight.detach().cpu().numpy())
         return accumulator
     
     

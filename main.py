@@ -8,7 +8,7 @@ def __main__():
     Run the game loop.
     """
     print("Chess engine starting")
-    evaluator = Evaluator()
+    evaluator = Evaluator("weights/model.pt")
     accumulator = evaluator.build_accumulator()
     game = Chess(accumulator)
 

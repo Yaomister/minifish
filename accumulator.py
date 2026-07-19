@@ -49,7 +49,7 @@ class Accumulator():
         for (file, rank), square in np.ndenumerate(board):
             if square and square[0] != "K":
                 index = self.get_index(self.square_with_king[perspective], file * 8 + rank, square[0], square[1], perspective)
-                accumulator[perspective] += self.weights[:, index]
+                accumulator[perspective] += self.weights[index]
 
         self.accumulator[perspective] = accumulator
 
@@ -72,4 +72,4 @@ class Accumulator():
 
     def get_logits(self, perspective):
         """Return the concatnated logits based on the perspective."""
-        return np.concatenate(self.accumulator[perspective], self.accumulator[not perspective])
+        return np.concatenate((self.accumulator[perspective], self.accumulator[not perspective]))
