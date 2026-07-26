@@ -37,7 +37,7 @@ def __main__():
                     print("Invalid move")
         else:
             print("Your opponent's move")
-            start, end, promotion = evaluator.get_best_move(game, False, 5)
+            start, end, promotion = evaluator.get_best_move(game, False, 3)
             game.make_move(start, end, promotion)
             print(Chess.convert_coordinates(start) + " to " + Chess.convert_coordinates(end))
 

@@ -25,6 +25,7 @@ class Accumulator():
             "B": 2,
             "R": 3,
             "Q": 4,
+            "K" : 5,
         }
 
         # flip the first three bits when its a black piece
@@ -66,9 +67,9 @@ class Accumulator():
         for perspective in (True, False):
             square_with_king = self.square_with_king[perspective]
             for square, piece, is_white in added:
-                self.accumulator[perspective] += self.weights[:, self.get_index(square_with_king, square, piece, is_white, perspective)]
+                self.accumulator[perspective] += self.weights[self.get_index(square_with_king, square, piece, is_white, perspective), :]
             for square, piece, is_white in removed:
-                self.accumulator[perspective] -= self.weights[:, self.get_index(square_with_king, square, piece, is_white, perspective)]
+                self.accumulator[perspective] -= self.weights[self.get_index(square_with_king, square, piece, is_white, perspective), :]
 
     def get_logits(self, perspective):
         """Return the concatnated logits based on the perspective."""

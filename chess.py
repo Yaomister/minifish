@@ -162,6 +162,17 @@ class Chess:
         # you cant place in a square that already has a piece of the same color
         if self.board[end] is not None and self.board[end][1] == self.turn:
             return False
+
+        # check pawn movement validity
+        if piece[0] == "P":
+            if (dist_f == 0):
+                if self.board[end] is not None:
+                    return False
+            else:
+                is_capturing_move = self.board[end] is not None
+                is_en_passant = (self.board[end] is None and self.en_passant is not False and end[0] == self.en_passant and ((self.turn and start[1] == 4 and end[1] == 5) or (not self.turn and start[1] == 3 and end[1] == 2)))
+                if not (is_capturing_move or is_en_passant):
+                    return False
         
         # check if there's anything blocking the path for a rook, bishop, or queen
         if piece[0] != "K" or abs(dist_f) != 2:
@@ -191,7 +202,7 @@ class Chess:
             check_board[end] = check_board[start]
             check_board[start] = None
             return not Chess.is_in_check(check_board, self.turn, self.attack_directions, self.king_locations[0 if self.board[start[0]][start[1]][1] else 1])
-        
+                
         # check if they can castle at all
         if not self.can_castle[0 if self.turn else 1][0 if dist_f == 2 else 1]:
             return False
@@ -246,6 +257,9 @@ class Chess:
 
     def undo_move(self):
         """Undo the last move."""
+        if (len(self.previous_moves) == 0):
+            return
+        
         record = self.previous_moves.pop()
 
         self.accumulator.apply_difference(added=record['removed'], removed=record['added'])
@@ -255,10 +269,11 @@ class Chess:
         self.king_locations = record["king_locations"]
         self.can_castle = record["can_castle"]
 
-        for (square, letter, color) in record['added']:
+        for (square, _, _) in record["added"]:
+                self.board[square] = None
+        
+        for (square, letter, color) in record['removed']:
             self.board[square] = (letter, color)
-        for (square, _, _) in record["removed"]:
-            self.board[square] = None
 
     
     def get_all_avaliable_moves(self):
@@ -417,12 +432,11 @@ class Chess:
 
             log[file][rank][4] = [(1, 2), (-1, 2), (1, -2), (-1, -2), (2, 1), (2, -1), (-2, 1), (-2, -1)]
 
-            if (rank > 0):
-                log[file][rank][5] = [(0, 1), (1, 1), (-1, 1)]
+         
+            log[file][rank][5] = [(0, 1), (1, 1), (-1, 1)]
             if (rank == 0):
                 log[file][rank][5].append((0, 2))
-            if (rank < 6):
-                log[file][rank][6] = [(0, -1), (1, -1), (-1, -1)]
+            log[file][rank][6] = [(0, -1), (1, -1), (-1, -1)]
             if (rank == 6):
                 log[file][rank][6].append((0, -2))
 

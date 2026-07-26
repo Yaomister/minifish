@@ -43,7 +43,7 @@ class Evaluator():
             ordered = [best_move] + [move for move in moves]
             
             if (current_depth == 1):
-                alpha, beta = float('inf'), -float('inf')
+                alpha, beta = -float('inf'), float('inf')
             else:
                 alpha, beta = previous_score - d, previous_score + d
 
@@ -53,7 +53,7 @@ class Evaluator():
 
                 for start, end, promotion in ordered:
                     game.make_move(start, end, promotion)
-                    score = self._minimax(game, float("inf"), -float('inf'), current_depth - 1, not maximizing)
+                    score = self._minimax(game, -float("inf"), float('inf'), current_depth - 1, not maximizing)                    
                     game.undo_move()
 
                     if maximizing and score > current_best_move_score:
@@ -64,7 +64,7 @@ class Evaluator():
                 if (current_best_move_score <= alpha):
                     alpha = previous_score - d * 2
                     d *= 2
-                elif (current_best_move >= beta):
+                elif (current_best_move_score >= beta):
                     beta = previous_score + d *2
                     d *=2
                 else:
@@ -87,9 +87,7 @@ class Evaluator():
         """
         Set up the accumulator.
         """
-
-        print(self.model.feature_extractor)
-        accumulator =  Accumulator(self.model.feature_extractor.weight.detach().cpu().numpy(), self.model.feature_bias.weight.detach().cpu().numpy())
+        accumulator =  Accumulator(self.model.feature_extractor.weight.detach().cpu().numpy(), self.model.feature_bias.detach().cpu().numpy())
         return accumulator
     
     
@@ -101,12 +99,12 @@ class Evaluator():
         moves = game.get_all_avaliable_moves()
 
         if not moves:
-            if game.is_in_check():
+            if game.is_in_check(game.board, game.turn, game.attack_directions, game.king_locations[0 if game.turn else 1]):
                 return float("inf") if maximizing else -float("inf")
             return 0
 
         if depth == 0:
-            if (game.is_in_check(game.board, game.white_moves, game.attack_directions, game.king_locations[0 if game.white_moves else 1])):
+            if (game.is_in_check(game.board, game.turn, game.attack_directions, game.king_locations[0 if game.turn else 1])):
                 return -float('inf') if maximizing else float("inf")
             return self._evaluate(game)
     
@@ -114,7 +112,7 @@ class Evaluator():
             for start, end, promotion in moves:
                 game.make_move(start, end ,promotion)
                 alpha = max(alpha, self._minimax(game, alpha, beta, depth - 1, False))
-                self.model.undo_move()
+                game.undo_move()
                 if beta <= alpha:
                     break
             return alpha
@@ -123,7 +121,7 @@ class Evaluator():
             for start, end, promotion in moves:
                 game.make_move(start, end, promotion)
                 beta = min(beta, self._minimax(game, alpha, beta, depth - 1, False))
-                self.model.undo_moves()
+                game.undo_move()
                 if beta <= alpha:
                     break
             return beta
