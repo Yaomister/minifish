@@ -328,6 +328,7 @@ class Chess:
             "en_passant": self.en_passant,
             "can_castle" : self.can_castle,
             "king_locations": list(self.king_locations),
+            "can_castle": [list(row) for row in self.can_castle],
         })
 
         # reset en passant

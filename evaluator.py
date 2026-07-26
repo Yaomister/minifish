@@ -52,14 +52,16 @@ class Evaluator():
                 current_best_move_score = -float("inf") if maximizing else float('inf')
 
                 for start, end, promotion in ordered:
-                    game.make_move(start, end, promotion)
-                    score = self._minimax(game, -float("inf"), float('inf'), current_depth - 1, not maximizing)                    
-                    game.undo_move()
+                    
+                    if game.make_move(start, end, promotion):
+                        score = self._minimax(game, -float("inf"), float('inf'), current_depth - 1, not maximizing)                    
 
-                    if maximizing and score > current_best_move_score:
-                        current_best_move, current_best_move_score = (start, end, promotion), score
-                    elif not maximizing and score < current_best_move_score:
-                        current_best_move, current_best_move_score = (start, end, promotion), score
+                        if maximizing and score > current_best_move_score:
+                            current_best_move, current_best_move_score = (start, end, promotion), score
+                        elif not maximizing and score < current_best_move_score:
+                            current_best_move, current_best_move_score = (start, end, promotion), score
+                            
+                        game.undo_move()
 
                 if (current_best_move_score <= alpha):
                     alpha = previous_score - d * 2
@@ -110,19 +112,19 @@ class Evaluator():
     
         if maximizing:
             for start, end, promotion in moves:
-                game.make_move(start, end ,promotion)
-                alpha = max(alpha, self._minimax(game, alpha, beta, depth - 1, False))
-                game.undo_move()
-                if beta <= alpha:
-                    break
+                if game.make_move(start, end ,promotion):
+                    alpha = max(alpha, self._minimax(game, alpha, beta, depth - 1, False))
+                    game.undo_move()
+                    if beta <= alpha:
+                        break
             return alpha
         
         else:
             for start, end, promotion in moves:
-                game.make_move(start, end, promotion)
-                beta = min(beta, self._minimax(game, alpha, beta, depth - 1, False))
-                game.undo_move()
-                if beta <= alpha:
-                    break
+                if game.make_move(start, end, promotion):
+                    beta = min(beta, self._minimax(game, alpha, beta, depth - 1, False))
+                    game.undo_move()
+                    if beta <= alpha:
+                        break
             return beta
         
