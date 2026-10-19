@@ -1,18 +1,21 @@
 import torch
 import torch.nn as nn
 
+
 class NNEU(nn.Module):
     """
     A efficient update neural network.
     """
-    
+
     # the width of the first layer
     in_features = 40960
 
     def __init__(self):
         super().__init__()
 
-        self.feature_extractor = nn.EmbeddingBag(40961, 256, mode="sum", padding_idx=40960)
+        self.feature_extractor = nn.EmbeddingBag(
+            40961, 256, mode="sum", padding_idx=40960
+        )
         self.feature_bias = nn.Parameter(torch.zeros(256))
 
         self.fn1 = nn.Linear(2 * 256, 32)
@@ -20,7 +23,7 @@ class NNEU(nn.Module):
         self.fn3 = nn.Linear(32, 1)
         self.relu = nn.ReLU()
 
-    def forward(self, white_features, black_features, perspective): 
+    def forward(self, white_features, black_features, perspective):
         """
         Pass the features through the model.
         """

@@ -24,12 +24,20 @@ def __main__():
                     if start == "Quit":
                         return
                     end = input("Choose a end square (e.g A1):\n").capitalize()
-                    promotion = input("Choose piece to promote to (press enter/return if not applicable):\n").capitalize()
+                    promotion = input(
+                        "Choose piece to promote to (press enter/return if not applicable):\n"
+                    ).capitalize()
 
                     start = game.convert_coordinates(start)
                     end = game.convert_coordinates(end)
 
-                    if game.board[start] and Chess.is_reachable(game.board, start, end[0] - start[0], end[1] - start[1]) and game.make_move(start, end, promotion):
+                    if (
+                        game.board[start]
+                        and Chess.is_reachable(
+                            game.board, start, end[0] - start[0], end[1] - start[1]
+                        )
+                        and game.make_move(start, end, promotion)
+                    ):
                         break
                     raise ValueError()
                 except:
@@ -39,10 +47,14 @@ def __main__():
             print("Your opponent's move")
             start, end, promotion = evaluator.get_best_move(game, False, 3)
             game.make_move(start, end, promotion)
-            print(Chess.convert_coordinates(start) + " to " + Chess.convert_coordinates(end))
+            print(
+                Chess.convert_coordinates(start)
+                + " to "
+                + Chess.convert_coordinates(end)
+            )
 
             if promotion:
                 print(f"Promoted to {promotion}")
 
+
 __main__()
-        
