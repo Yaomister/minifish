@@ -1,3 +1,8 @@
+"""
+The efficient update neural network (NNEU).
+"""
+
+import utils
 import torch
 import torch.nn as nn
 
@@ -12,6 +17,8 @@ class NNEU(nn.Module):
 
     def __init__(self):
         super().__init__()
+
+        self.device = utils.get_device()
 
         self.feature_extractor = nn.EmbeddingBag(
             40961, 256, mode="sum", padding_idx=40960
@@ -35,3 +42,12 @@ class NNEU(nn.Module):
         x = self.relu(self.fn1(x))
         x = self.relu(self.fn2(x))
         return self.fn3(x)
+
+    def forward_from_accumulator(self, logits):
+        x = torch.from_numpy(logits).float().to(self.device).unsqueeze(0)
+        x = self.relu(x)
+        x = self.relu(self.fn1(x))
+        x = self.relu(self.fn2(x))
+        x = self.fn3(x)
+
+        return x.item()

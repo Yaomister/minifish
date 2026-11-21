@@ -1,6 +1,8 @@
+"""The entry point to start a game with minifish."""
+
+import traceback
 from chess import Chess
 from evaluator import Evaluator
-import traceback
 
 
 def __main__():
@@ -14,8 +16,9 @@ def __main__():
 
     color = input("Choose color (B/W)\n") == "W"
 
-    while not len(game.get_all_avaliable_moves()) == 0:
+    while len(game.get_all_avaliable_moves()) != 0:
         print(game)
+
         if game.turn == color:
             while True:
                 try:
@@ -40,12 +43,11 @@ def __main__():
                     ):
                         break
                     raise ValueError()
-                except:
-                    traceback.print_exc()
+                except ValueError as error:
                     print("Invalid move")
         else:
             print("Your opponent's move")
-            start, end, promotion = evaluator.get_best_move(game, False, 3)
+            start, end, promotion = evaluator.get_best_move(game, not color, 3)
             game.make_move(start, end, promotion)
             print(
                 Chess.convert_coordinates(start)

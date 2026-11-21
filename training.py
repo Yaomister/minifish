@@ -1,16 +1,21 @@
+"""Training for the NNEU."""
+
 import os
 import glob
 import torch
-from nneu import NNEU
+import utils
 import numpy as np
+from nneu import NNEU
 from torch.optim import Adam
 from torch.nn import MSELoss
-from torch.utils.data import DataLoader, TensorDataset, random_split
 from torch.optim import Adam, lr_scheduler
+from torch.utils.data import DataLoader, TensorDataset, random_split
 
 training_epochs = 100
 learning_rate = 1e-3
 split = 0.1
+
+device = utils.get_device()
 
 
 def set_up_dataset():
@@ -48,11 +53,6 @@ def set_up_dataset():
 
 if __name__ == "__main__":
     os.makedirs("weights", exist_ok=True)
-    device = (
-        torch.device("mps")
-        if torch.backends.mps.is_available()
-        else torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    )
 
     dataset = set_up_dataset()
     val_n = int(split * len(dataset))
@@ -63,6 +63,7 @@ if __name__ == "__main__":
     val_loader = DataLoader(dataset=val_data, batch_size=256, shuffle=False)
 
     model = NNEU().to(device)
+
     optimizer = Adam(params=model.parameters(), lr=1e-3)
     scheduler = lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=training_epochs, eta_min=1e-5

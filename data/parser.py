@@ -1,11 +1,13 @@
+"""Parses the Lichess dataset into training data for the NNEU."""
+
 import os
 import re
 import math
-import numpy as np
-import zstandard as zstd
-from chess import Chess
-from accumulator import Accumulator
 import traceback
+import numpy as np
+from chess import Chess
+import zstandard as zstd
+from accumulator import Accumulator
 
 
 def get_move(game: Chess, san: str):
@@ -16,6 +18,7 @@ def get_move(game: Chess, san: str):
     # use regex to split up the algebraic notation
     regex = "^([NBRQK])?([a-h])?([1-8])?(x)?([a-h][1-8])(?:=([NBRQ]))?$"
     turn = game.turn
+
     # castling
     if san == "O-O" or san == "O-O-O":
         rank = 0 if turn else 7
@@ -28,9 +31,11 @@ def get_move(game: Chess, san: str):
 
     # the piece moved
     piece = move.group(1) or "P"
+
     # when the file or rank is ambiguous
     dfile = move.group(2)
     drank = move.group(3)
+
     end_file, end_rank = game.convert_coordinates(move.group(5).capitalize())
     promotion = move.group(6)
 
@@ -97,7 +102,7 @@ def process_game(current_headers, current_moves):
     if "Variant" in current_headers:
         return [], [], [], []
 
-    game = Chess(accumulator=Accumulator(np.zeros((256, 40960)), np.zeros(256)))
+    game = Chess(accumulator=Accumulator(np.zeros((40960, 256)), np.zeros(256)))
 
     white_perspective = []
     black_perspective = []

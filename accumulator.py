@@ -1,3 +1,5 @@
+"""The accumulator used to keep track of player scores."""
+
 import numpy as np
 
 
@@ -20,6 +22,7 @@ class Accumulator:
 
         if type(square_with_king) == tuple:
             square_with_king = square_with_king[0] * 8 + square_with_king[1]
+
         if type(square_with_piece) == tuple:
             square_with_piece = square_with_piece[0] * 8 + square_with_piece[1]
 
@@ -43,7 +46,7 @@ class Accumulator:
 
     def _reset_accumulation(self, board, perspective):
         """
-        Reset
+        Reset the accumulator.
         """
         for (file, rank), square in np.ndenumerate(board):
             if square and square[0] == "K" and square[1] == perspective:
@@ -68,12 +71,12 @@ class Accumulator:
         """Reset the board when the king moves."""
         self._reset_accumulation(board, True)
         self._reset_accumulation(board, False)
-        return
 
     def apply_difference(self, added, removed):
         """Add and remove the weigths based on how the pieces moved"""
         for perspective in (True, False):
             square_with_king = self.square_with_king[perspective]
+            # add the weights to the accumulator for the pieces that were added
             for square, piece, is_white in added:
                 self.accumulator[perspective] += self.weights[
                     self.get_index(
@@ -81,6 +84,8 @@ class Accumulator:
                     ),
                     :,
                 ]
+
+            # remove the weights from the accumulator for the pieces that were removed
             for square, piece, is_white in removed:
                 self.accumulator[perspective] -= self.weights[
                     self.get_index(
@@ -91,6 +96,8 @@ class Accumulator:
 
     def get_logits(self, perspective):
         """Return the concatnated logits based on the perspective."""
+
+        # the current player's perspective always comes first
         return np.concatenate(
             (self.accumulator[perspective], self.accumulator[not perspective])
         )
