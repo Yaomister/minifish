@@ -6,7 +6,7 @@ minifish is a lightweight chess evaluation network. It is a chess engine powered
 
 ## Design notes
 
-minifish is kind of built on one observation: **the neural network's first layer and the engine's accumulator are the same thing.** Both take the position's feature indicies and suyes, the matching weight columns (simple matrix multiplication). Training does it with a `EmbeddingBag`; the engine does it incrementally, adding and subtracting tensors as the board changes.
+The NNEU is kind of built on one observation: **the neural network's first layer and the engine's accumulator are the same thing.** Both take the position's feature indicies and suyes, the matching weight columns (simple matrix multiplication). Training does it with a `EmbeddingBag`; the engine does it incrementally, adding and subtracting tensors as the board changes.
 
 A few points should be noted:
 
